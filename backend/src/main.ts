@@ -6,9 +6,9 @@ import { SchwabAuth } from './utils/schwab_auth.js';
 import { log } from './utils/logger.js';
 
 const schwab_auth = new SchwabAuth(
-  process.env.SCHWAB_CLIENT_ID || '',
-  process.env.SCHWAB_CLIENT_SECRET || '',
-  process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1'
+  process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '',
+  process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET || '',
+  process.env.SCHWAB_CALLBACK_URL || process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1'
 );
 
 const schwab_client = new SchwabClient(
