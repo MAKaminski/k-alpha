@@ -19,6 +19,7 @@ export class SchwabAuth {
   private client_id: string;
   private client_secret: string;
   private redirect_uri: string;
+  private cached_tokens: TokenData | null = null;
 
   constructor(client_id: string, client_secret: string, redirect_uri: string) {
     this.client_id = client_id;
@@ -37,17 +38,18 @@ export class SchwabAuth {
   }
 
   async exchange_code_for_tokens(code: string): Promise<TokenData> {
+    const auth = Buffer.from(`${this.client_id}:${this.client_secret}`).toString('base64');
+    
     const response = await fetch('https://api.schwabapi.com/v1/oauth/token', {
       method: 'POST',
       headers: {
+        'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: this.redirect_uri,
-        client_id: this.client_id,
-        client_secret: this.client_secret
+        redirect_uri: this.redirect_uri
       })
     });
 
@@ -63,16 +65,17 @@ export class SchwabAuth {
   }
 
   async refresh_access_token(refresh_token: string): Promise<TokenData> {
+    const auth = Buffer.from(`${this.client_id}:${this.client_secret}`).toString('base64');
+    
     const response = await fetch('https://api.schwabapi.com/v1/oauth/token', {
       method: 'POST',
       headers: {
+        'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: refresh_token,
-        client_id: this.client_id,
-        client_secret: this.client_secret
+        refresh_token: refresh_token
       })
     });
 
@@ -88,15 +91,46 @@ export class SchwabAuth {
   }
 
   save_tokens(tokens: TokenData): void {
-    fs.writeFileSync(TOKEN_FILE_PATH, JSON.stringify(tokens, null, 2));
-    console.log(`Tokens saved to ${TOKEN_FILE_PATH}`);
+    // Always cache in memory
+    this.cached_tokens = tokens;
+    
+    // Try to save to file (works in local dev, may fail on Railway)
+    try {
+      fs.writeFileSync(TOKEN_FILE_PATH, JSON.stringify(tokens, null, 2));
+      console.log(`Tokens saved to ${TOKEN_FILE_PATH}`);
+    } catch (error) {
+      // On Railway/production, filesystem might be read-only or ephemeral
+      // Tokens will stay in memory for current session
+      console.warn('Unable to save tokens to file (production environment)');
+      console.warn('Tokens are cached in memory for this session');
+      console.warn('Update SCHWAB_TOKENS environment variable before refresh token expires (7 days)');
+    }
   }
 
   load_tokens(): TokenData | null {
+    // Return cached tokens if available (handles refreshed tokens on Railway)
+    if (this.cached_tokens) {
+      return this.cached_tokens;
+    }
+    
+    // Try loading from file first (local development)
     try {
       const data = fs.readFileSync(TOKEN_FILE_PATH, 'utf-8');
-      return JSON.parse(data) as TokenData;
+      const tokens = JSON.parse(data) as TokenData;
+      this.cached_tokens = tokens;
+      return tokens;
     } catch {
+      // If file doesn't exist, try environment variable (Railway/production)
+      if (process.env.SCHWAB_TOKENS) {
+        try {
+          const tokens = JSON.parse(process.env.SCHWAB_TOKENS) as TokenData;
+          this.cached_tokens = tokens;
+          return tokens;
+        } catch (error) {
+          console.error('Failed to parse SCHWAB_TOKENS environment variable:', error);
+          return null;
+        }
+      }
       return null;
     }
   }
