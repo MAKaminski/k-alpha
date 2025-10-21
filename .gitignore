@@ -8,6 +8,10 @@ node_modules/
 backend/.env
 frontend/.env.local
 
+# Schwab OAuth tokens (NEVER commit these)
+.schwab_tokens.json
+backend/.schwab_tokens.json
+
 # Build outputs
 dist/
 .next/

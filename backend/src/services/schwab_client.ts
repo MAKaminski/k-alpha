@@ -23,17 +23,27 @@ interface SchwabQuoteResponse {
 
 export class SchwabClient {
   private access_token: string;
+  private get_access_token?: () => Promise<string>;
 
-  constructor(access_token: string) {
+  constructor(access_token: string, get_access_token?: () => Promise<string>) {
     this.access_token = access_token;
+    this.get_access_token = get_access_token;
+  }
+
+  private async get_current_token(): Promise<string> {
+    if (this.get_access_token) {
+      return await this.get_access_token();
+    }
+    return this.access_token;
   }
 
   async fetch_quote(symbol: string): Promise<QuoteData> {
     const url = `${CONSTANTS.SCHWAB_API_BASE_URL}/quotes?symbols=${symbol}`;
+    const token = await this.get_current_token();
     
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${this.access_token}`,
+        'Authorization': `Bearer ${token}`,
         'Accept': 'application/json'
       }
     });
