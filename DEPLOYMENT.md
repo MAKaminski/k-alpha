@@ -32,12 +32,16 @@ git push -u origin main
    - `anon` `public` key (for frontend `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
    - `service_role` `secret` key (for backend `SUPABASE_KEY`)
 
-### 3. Get Schwab API Credentials
+### 3. Get Schwab API Credentials and Authenticate
 
-1. Go to [developer.schwab.com](https://developer.schwab.com)
-2. Create an app
-3. Complete OAuth flow to get access token
-4. Note: Tokens expire - you'll need to implement refresh logic for production
+**See `SCHWAB_AUTH_SETUP.md` for complete step-by-step guide.**
+
+Quick steps:
+1. Go to [developer.schwab.com](https://developer.schwab.com) and create an app
+2. Get your Client ID and Client Secret
+3. Set Redirect URI to `https://127.0.0.1`
+4. Run `npm run auth` in backend folder to authenticate
+5. Tokens are automatically managed (auto-refresh)
 
 ### 4. Deploy Backend to Railway
 
@@ -48,11 +52,17 @@ git push -u origin main
    - Root Directory: `backend`
    - Click "Add Variables" and add:
      ```
-     SCHWAB_ACCESS_TOKEN=<your_token>
+     SCHWAB_CLIENT_ID=<your_client_id>
+     SCHWAB_CLIENT_SECRET=<your_client_secret>
+     SCHWAB_REDIRECT_URI=https://127.0.0.1
      SUPABASE_URL=<your_supabase_url>
      SUPABASE_KEY=<your_supabase_service_key>
      ```
-5. Click "Deploy"
+5. After first deployment, run authentication on Railway:
+   - Use Railway CLI: `railway run npm run auth`
+   - OR use the web terminal in Railway dashboard
+   - Follow the OAuth flow as documented in `SCHWAB_AUTH_SETUP.md`
+6. Redeploy after authentication completes
 
 ### 5. Deploy Frontend to Vercel
 
