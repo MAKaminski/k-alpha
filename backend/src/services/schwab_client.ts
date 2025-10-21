@@ -9,6 +9,18 @@ interface QuoteData {
   timestamp: Date;
 }
 
+interface SchwabQuoteResponse {
+  [symbol: string]: {
+    quote?: {
+      bidPrice?: number;
+      askPrice?: number;
+      lastPrice?: number;
+      totalVolume?: number;
+      quoteTime?: number;
+    };
+  };
+}
+
 export class SchwabClient {
   private access_token: string;
 
@@ -30,7 +42,7 @@ export class SchwabClient {
       throw new Error(`Schwab API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as SchwabQuoteResponse;
     const quote = data[symbol]?.quote;
 
     if (!quote) {
