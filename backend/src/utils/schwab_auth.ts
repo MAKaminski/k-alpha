@@ -145,12 +145,12 @@ function extract_code_from_url(callback_url: string): string {
 }
 
 export async function run_auth_flow(): Promise<void> {
-  const client_id = process.env.SCHWAB_CLIENT_ID;
-  const client_secret = process.env.SCHWAB_CLIENT_SECRET;
-  const redirect_uri = process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1';
+  const client_id = process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID;
+  const client_secret = process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET;
+  const redirect_uri = process.env.SCHWAB_CALLBACK_URL || process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1';
 
   if (!client_id || !client_secret) {
-    throw new Error('SCHWAB_CLIENT_ID and SCHWAB_CLIENT_SECRET must be set');
+    throw new Error('SCHWAB_API_KEY and SCHWAB_API_SECRET must be set');
   }
 
   const auth = new SchwabAuth(client_id, client_secret, redirect_uri);
