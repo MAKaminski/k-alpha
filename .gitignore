@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env*.local
+backend/.env
+frontend/.env.local
+
+# Build outputs
+dist/
+.next/
+build/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+
+# Deployment
+.vercel
+.railway
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
