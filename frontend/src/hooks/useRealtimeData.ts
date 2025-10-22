@@ -160,13 +160,12 @@ export function useRealtimeData() {
     const sortedQuotes = [...quotes].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
     // Process quotes and calculate interval volume
+    console.log(`Processing ${sortedQuotes.length} quotes for chart data`)
     sortedQuotes.forEach((quote, index) => {
       const time = new Date(quote.timestamp)
       
-      // Only include data within trading day (8am-5pm EST)
-      if (time < marketOpen || time > marketEnd) {
-        return
-      }
+      // Include all data - we'll format time labels appropriately
+      console.log(`Processing quote ${index + 1}: ${time.toISOString()}, price: ${quote.last_price}`)
       
       const key = time.toISOString()
       
@@ -182,28 +181,12 @@ export function useRealtimeData() {
         console.log(`First quote volume: ${intervalVolume}`)
       }
       
-      // Format time as trading hours (9am-4pm EST) with actual time progression
-      const estTime = new Date(time.getTime() - (time.getTimezoneOffset() * 60000) + (5 * 60 * 60 * 1000)) // Convert to EST
-      const hours = estTime.getHours()
-      const minutes = estTime.getMinutes()
-      const seconds = estTime.getSeconds()
+      // Format time as HH:MM:SS for consistent display
+      const hours = time.getHours()
+      const minutes = time.getMinutes()
+      const seconds = time.getSeconds()
       
-      let timeLabel: string
-      if (hours >= 9 && hours < 16) {
-        // During trading hours, show actual time with minute precision
-        timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-      } else {
-        // Outside trading hours, show relative time
-        const diffMs = now.getTime() - time.getTime()
-        const diffMinutes = Math.floor(diffMs / 60000)
-        const diffSeconds = Math.floor((diffMs % 60000) / 1000)
-        
-        if (diffMinutes > 0) {
-          timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
-        } else {
-          timeLabel = `${diffSeconds}s ago`
-        }
-      }
+      const timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
       
       dataMap.set(key, {
         timestamp: quote.timestamp,
@@ -281,9 +264,16 @@ export function useRealtimeData() {
     })
 
     // Convert to array and sort by timestamp
-    return Array.from(dataMap.values())
+    const result = Array.from(dataMap.values())
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       // Don't limit to 100 points - show full trading day
+    
+    console.log('Combined data result:', result.length, 'points')
+    if (result.length > 0) {
+      console.log('First data point:', result[0])
+      console.log('Last data point:', result[result.length - 1])
+    }
+    return result
   }
 
   const handleNewQuote = (payload: any) => {
