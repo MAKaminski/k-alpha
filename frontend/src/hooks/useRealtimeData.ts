@@ -108,7 +108,9 @@ export function useRealtimeData() {
       console.log('Supabase query result:', {
         error: indicatorsResult.error,
         data: indicatorsResult.data,
-        count: indicatorsResult.data?.length || 0
+        count: indicatorsResult.data?.length || 0,
+        firstRecord: indicatorsResult.data?.[0],
+        lastRecord: indicatorsResult.data?.[indicatorsResult.data?.length - 1]
       })
 
       if (indicatorsResult.error) throw indicatorsResult.error

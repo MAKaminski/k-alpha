@@ -92,6 +92,18 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   )
   
   console.log('Valid data points after filtering:', validData.length, 'out of', data.length)
+  if (validData.length > 0) {
+    console.log('First valid data point:', validData[0])
+    console.log('Last valid data point:', validData[validData.length - 1])
+  } else {
+    console.log('No valid data points found!')
+    console.log('Sample invalid data:', data.slice(0, 3).map(d => ({
+      time: d.time,
+      last_price: d.last_price,
+      sma9: d.sma9,
+      session_vwap: d.session_vwap
+    })))
+  }
   
   const dataWithOptionPrices = validData.map(d => {
     // Group calls by strike price for individual series
