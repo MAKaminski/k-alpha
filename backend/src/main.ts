@@ -4,6 +4,7 @@ import { SchwabClient } from './services/schwab_client.js';
 import { OptionsClient } from './services/options_client.js';
 import { SupabaseService } from './services/supabase_client.js';
 import { OptionsSupabaseService } from './services/options_supabase.js';
+import { IndicatorsService } from './services/indicators_service.js';
 import { SchwabAuth } from './utils/schwab_auth.js';
 import { log } from './utils/logger.js';
 
@@ -33,6 +34,11 @@ const options_supabase = new OptionsSupabaseService(
   process.env.SUPABASE_KEY!
 );
 
+const indicators_service = new IndicatorsService(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+);
+
 async function fetch_and_store_quote(): Promise<void> {
   try {
     const quote = await schwab_client.fetch_quote(CONSTANTS.QUOTE_SYMBOL);
@@ -48,11 +54,29 @@ async function fetch_and_store_quote(): Promise<void> {
 
     log(`Stored ${quote.symbol}: $${quote.last_price}`);
     
+    // Calculate and store technical indicators
+    await calculate_and_store_indicators(quote);
+    
     // Fetch and store 0DTE options data
     await fetch_and_store_options(quote.last_price);
     
   } catch (error) {
     log(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function calculate_and_store_indicators(quote: any): Promise<void> {
+  try {
+    await indicators_service.calculateAndStoreIndicators({
+      symbol: quote.symbol,
+      last_price: quote.last_price,
+      volume: quote.volume,
+      timestamp: quote.timestamp.toISOString()
+    });
+    
+    log(`Calculated indicators for ${quote.symbol}: $${quote.last_price}`);
+  } catch (error) {
+    log(`Indicators error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
