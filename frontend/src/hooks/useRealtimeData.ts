@@ -95,101 +95,84 @@ export function useRealtimeData() {
         sample: allDataResult.data?.[0]
       })
 
-      // Get all data for today's session using pagination to bypass 1000 row limit
-      const pageSize = 1000
-      let allIndicators: any[] = []
-      let from = 0
-      let to = pageSize - 1
-      let hasMoreData = true
-
-      while (hasMoreData) {
-        const { data: pageData, error } = await supabase
-          .from('indicators')
+      // Get aggregated chart data (stays under 1000 row limit)
+      const [chartDataResult] = await Promise.all([
+        supabase
+          .from('chart_data')
           .select('*')
           .eq('symbol', 'QQQ')
           .eq('session_date', today.toISOString().split('T')[0])
           .order('timestamp', { ascending: true })
-          .range(from, to)
+          .limit(1000) // Should be well under 1000 rows (max ~480 minutes per day)
+      ])
 
-        if (error) {
-          console.error('Error fetching indicators data:', error)
-          break
-        }
-
-        if (pageData && pageData.length > 0) {
-          allIndicators = allIndicators.concat(pageData)
-          from += pageSize
-          to += pageSize
-          hasMoreData = pageData.length === pageSize
-        } else {
-          hasMoreData = false
-        }
-      }
-
-      const indicatorsResult = { data: allIndicators, error: null }
-
-      console.log('Supabase query result:', {
-        error: indicatorsResult.error,
-        data: indicatorsResult.data,
-        count: indicatorsResult.data?.length || 0,
-        firstRecord: indicatorsResult.data?.[0],
-        lastRecord: indicatorsResult.data?.[indicatorsResult.data?.length - 1]
+      console.log('Chart data query result:', {
+        error: chartDataResult.error,
+        data: chartDataResult.data,
+        count: chartDataResult.data?.length || 0,
+        firstRecord: chartDataResult.data?.[0],
+        lastRecord: chartDataResult.data?.[chartDataResult.data?.length - 1]
       })
 
       // Debug: Check the actual time range of data
-      if (indicatorsResult.data && indicatorsResult.data.length > 0) {
-        const firstTime = new Date(indicatorsResult.data[0].timestamp)
-        const lastTime = new Date(indicatorsResult.data[indicatorsResult.data.length - 1].timestamp)
-        console.log('Data time range:', {
+      if (chartDataResult.data && chartDataResult.data.length > 0) {
+        const firstTime = new Date(chartDataResult.data[0].timestamp)
+        const lastTime = new Date(chartDataResult.data[chartDataResult.data.length - 1].timestamp)
+        console.log('Chart data time range:', {
           firstTime: firstTime.toLocaleString('en-US', { timeZone: 'America/New_York' }),
           lastTime: lastTime.toLocaleString('en-US', { timeZone: 'America/New_York' }),
           duration: `${Math.round((lastTime.getTime() - firstTime.getTime()) / (1000 * 60))} minutes`
         })
       }
 
-      if (indicatorsResult.error) throw indicatorsResult.error
+      if (chartDataResult.error) throw chartDataResult.error
 
-      const indicators = indicatorsResult.data as Indicator[]
+      const chartData = chartDataResult.data as any[]
       const quotes: Quote[] = [] // No quotes table available
       const options: Option[] = [] // No options table available
 
       console.log('Fetched data:', {
         quotes: quotes.length,
-        indicators: indicators.length,
+        chartData: chartData.length,
         options: options.length,
-        firstQuote: quotes[0]?.timestamp,
-        lastQuote: quotes[quotes.length - 1]?.timestamp,
-        firstIndicator: indicators[0]?.timestamp,
-        lastIndicator: indicators[indicators.length - 1]?.timestamp,
-        firstQuoteTime: quotes[0] ? new Date(quotes[0].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A',
-        lastQuoteTime: quotes[quotes.length - 1] ? new Date(quotes[quotes.length - 1].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A',
-        sampleIndicator: indicators[0] ? {
-          symbol: indicators[0].symbol,
-          last_price: indicators[0].last_price,
-          sma9: indicators[0].sma9,
-          session_vwap: indicators[0].session_vwap,
-          is_market_hours: indicators[0].is_market_hours,
-          timestamp: indicators[0].timestamp
-        } : 'No indicators'
+        firstChartData: chartData[0]?.timestamp,
+        lastChartData: chartData[chartData.length - 1]?.timestamp,
+        firstChartDataTime: chartData[0] ? new Date(chartData[0].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A',
+        lastChartDataTime: chartData[chartData.length - 1] ? new Date(chartData[chartData.length - 1].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A',
+        sampleChartData: chartData[0] ? {
+          symbol: chartData[0].symbol,
+          close_price: chartData[0].close_price,
+          sma9: chartData[0].sma9,
+          session_vwap: chartData[0].session_vwap,
+          is_market_hours: chartData[0].is_market_hours,
+          timestamp: chartData[0].timestamp
+        } : 'No chart data'
       })
 
       // Combine and process data
-      const combinedData = combineData(quotes, indicators, options)
+      const combinedData = combineChartData(chartData, options)
       console.log('Combined data points:', combinedData.length)
       
-      // If no data from today, try to get any recent data
+      // If no chart data, fall back to indicators with sampling to stay under 1000 rows
       if (combinedData.length === 0) {
-        console.log('No data from today, trying to get any recent data...')
+        console.log('No chart data found, falling back to sampled indicators data...')
+        
+        // Get indicators data with sampling (every 10th record) to reduce volume
         const fallbackResult = await supabase
           .from('indicators')
           .select('*')
           .eq('symbol', 'QQQ')
-          .order('timestamp', { ascending: false })
-          .limit(50)
+          .order('timestamp', { ascending: true })
+          .limit(1000)
         
         if (fallbackResult.data && fallbackResult.data.length > 0) {
-          console.log('Found fallback data:', fallbackResult.data.length, 'records')
-          const fallbackData = combineData([], fallbackResult.data as Indicator[], [])
+          console.log('Found fallback indicators data:', fallbackResult.data.length, 'records')
+          
+          // Sample the data to reduce volume while maintaining time range
+          const sampledData = fallbackResult.data.filter((_, index) => index % 10 === 0)
+          console.log('Sampled data to:', sampledData.length, 'records')
+          
+          const fallbackData = combineData([], sampledData as Indicator[], [])
           setChartData(fallbackData)
         } else {
           setChartData([])
@@ -210,6 +193,62 @@ export function useRealtimeData() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const combineChartData = (chartData: any[], options: Option[]): ChartData[] => {
+    // Process aggregated chart data
+    console.log(`Processing ${chartData.length} chart data points`)
+    
+    const result: ChartData[] = []
+    
+    chartData.forEach((data, index) => {
+      const time = new Date(data.timestamp)
+      
+      // Format time as HH:MM:SS in EST for consistent display
+      const estTime = time.toLocaleString('en-US', { 
+        timeZone: 'America/New_York',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+      
+      const timeLabel = estTime
+      
+      // Use the close price from aggregated data (convert string to number)
+      const price = parseFloat(data.close_price.toString())
+      
+      result.push({
+        timestamp: data.timestamp,
+        time: timeLabel,
+        last_price: price,
+        sma9: data.sma9 ? parseFloat(data.sma9.toString()) : null,
+        session_vwap: data.session_vwap ? parseFloat(data.session_vwap.toString()) : null,
+        volume: data.volume,
+        calls: [],
+        puts: [],
+        bid: price - 0.01,
+        ask: price + 0.01
+      })
+    })
+    
+    console.log('Created chart data from aggregated data:', result.length, 'points')
+    console.log('Sample chart data:', result.slice(0, 3))
+    
+    // Debug: Check for any issues with the data
+    const hasValidPrices = result.every(d => d.last_price && d.last_price > 0)
+    const hasValidTimes = result.every(d => d.time && d.time.length > 0)
+    const sma9Count = result.filter(d => d.sma9 !== null).length
+    const vwapCount = result.filter(d => d.session_vwap !== null).length
+    console.log('Data validation:', { 
+      hasValidPrices, 
+      hasValidTimes, 
+      sma9Count, 
+      vwapCount,
+      totalPoints: result.length
+    })
+    
+    return result
   }
 
   const combineData = (quotes: Quote[], indicators: Indicator[], options: Option[]): ChartData[] => {
