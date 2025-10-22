@@ -7,16 +7,24 @@
     "export-tokens": "tsx src/export_tokens.ts",
     "dev": "tsx watch src/main.ts",
     "build": "tsc",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:e2e": "jest --testPathPattern=e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.10.6",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }
 }
-
