@@ -107,43 +107,29 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
 
   // Create a complete dataset with all market hours (9am-4pm) filled in
   const createCompleteDataset = () => {
-    const completeData = []
+    // Instead of creating artificial time slots, use the actual data but ensure we have the full time range
+    // First, let's sort the valid data by time
+    const sortedData = [...validData].sort((a, b) => {
+      // Parse time strings to compare them properly
+      const timeA = a.time.split(':').map(Number)
+      const timeB = b.time.split(':').map(Number)
+      return (timeA[0] * 3600 + timeA[1] * 60 + timeA[2]) - (timeB[0] * 3600 + timeB[1] * 60 + timeB[2])
+    })
     
-    // Create entries for every 30 minutes from 9am to 4pm
+    // Create time labels for full market hours (9am-4pm) for X-axis
+    const marketHoursLabels = []
     for (let hour = 9; hour <= 16; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
         const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
-        
-        // Find matching data point or create empty one
-        const matchingData = validData.find(d => {
-          // Try to match time format - could be "Xm Ys ago" or "HH:MM:SS"
-          if (d.time.includes(':')) {
-            return d.time.startsWith(timeLabel.substring(0, 5)) // Match HH:MM
-          }
-          return false
-        })
-        
-        if (matchingData) {
-          completeData.push({
-            ...matchingData,
-            time: timeLabel // Standardize time format
-          })
-        } else {
-          // Create empty data point for missing time slots
-          completeData.push({
-            time: timeLabel,
-            last_price: null,
-            sma9: null,
-            session_vwap: null,
-            volume: 0,
-            calls: [],
-            puts: []
-          })
-        }
+        marketHoursLabels.push(timeLabel)
       }
     }
     
-    return completeData
+    // Return the actual data with proper time formatting
+    return sortedData.map(d => ({
+      ...d,
+      time: d.time // Keep the original time format
+    }))
   }
   
   const completeData = createCompleteDataset()
@@ -204,8 +190,6 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
             type="category"
-            domain={['9:00:00', '16:00:00']}
-            ticks={marketHoursLabels.map(label => label.time)}
           />
           {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
           <ReferenceArea 
