@@ -38,6 +38,9 @@ export function VolumeChart({ data }: VolumeChartProps) {
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
+            domain={['9:00:00', '16:00:00']}
+            type="category"
+            scale="point"
           />
           <YAxis 
             tick={{ fontSize: 12 }}
