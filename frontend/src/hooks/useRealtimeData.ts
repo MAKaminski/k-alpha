@@ -95,16 +95,38 @@ export function useRealtimeData() {
         sample: allDataResult.data?.[0]
       })
 
-      // Get all data for today's session
-      const [indicatorsResult] = await Promise.all([
-        supabase
+      // Get all data for today's session using pagination to bypass 1000 row limit
+      const pageSize = 1000
+      let allIndicators: any[] = []
+      let from = 0
+      let to = pageSize - 1
+      let hasMoreData = true
+
+      while (hasMoreData) {
+        const { data: pageData, error } = await supabase
           .from('indicators')
           .select('*')
           .eq('symbol', 'QQQ')
-          .eq('session_date', today.toISOString().split('T')[0]) // Get all data for today
+          .eq('session_date', today.toISOString().split('T')[0])
           .order('timestamp', { ascending: true })
-          .limit(10000) // Increase limit to handle full day data
-      ])
+          .range(from, to)
+
+        if (error) {
+          console.error('Error fetching indicators data:', error)
+          break
+        }
+
+        if (pageData && pageData.length > 0) {
+          allIndicators = allIndicators.concat(pageData)
+          from += pageSize
+          to += pageSize
+          hasMoreData = pageData.length === pageSize
+        } else {
+          hasMoreData = false
+        }
+      }
+
+      const indicatorsResult = { data: allIndicators, error: null }
 
       console.log('Supabase query result:', {
         error: indicatorsResult.error,
@@ -113,6 +135,17 @@ export function useRealtimeData() {
         firstRecord: indicatorsResult.data?.[0],
         lastRecord: indicatorsResult.data?.[indicatorsResult.data?.length - 1]
       })
+
+      // Debug: Check the actual time range of data
+      if (indicatorsResult.data && indicatorsResult.data.length > 0) {
+        const firstTime = new Date(indicatorsResult.data[0].timestamp)
+        const lastTime = new Date(indicatorsResult.data[indicatorsResult.data.length - 1].timestamp)
+        console.log('Data time range:', {
+          firstTime: firstTime.toLocaleString('en-US', { timeZone: 'America/New_York' }),
+          lastTime: lastTime.toLocaleString('en-US', { timeZone: 'America/New_York' }),
+          duration: `${Math.round((lastTime.getTime() - firstTime.getTime()) / (1000 * 60))} minutes`
+        })
+      }
 
       if (indicatorsResult.error) throw indicatorsResult.error
 
