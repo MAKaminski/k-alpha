@@ -41,6 +41,20 @@ export default function Home() {
           onToggleOptions={() => setShowOptions(!showOptions)}
         />
         
+        {/* Debug Information */}
+        <div className="bg-yellow-100 border border-yellow-400 rounded p-4 mb-4">
+          <h3 className="font-bold text-yellow-800">Debug Information</h3>
+          <p>Loading: {loading ? 'Yes' : 'No'}</p>
+          <p>Chart Data Points: {chartData.length}</p>
+          <p>Latest Quote: {latestQuote ? `${latestQuote.symbol} $${latestQuote.last_price}` : 'None'}</p>
+          {chartData.length > 0 && (
+            <div>
+              <p>First Data Point: {chartData[0].time} - ${chartData[0].last_price}</p>
+              <p>Last Data Point: {chartData[chartData.length - 1].time} - ${chartData[chartData.length - 1].last_price}</p>
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 gap-6">
           <PriceChart
             data={chartData}
