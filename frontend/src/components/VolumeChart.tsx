@@ -10,6 +10,12 @@ export function VolumeChart({ data }: VolumeChartProps) {
   // Debug: Log volume data
   console.log('Volume chart data:', data.map(d => ({ time: d.time, volume: d.volume })).slice(0, 5))
   
+  console.log('VolumeChart received data:', data.length, 'points')
+  if (data.length > 0) {
+    console.log('First volume data point:', data[0])
+    console.log('Last volume data point:', data[data.length - 1])
+  }
+
   return (
     <div className="w-full h-48 bg-white rounded-lg shadow-lg p-4">
       <h3 className="text-lg font-semibold mb-4">Volume (Interval)</h3>

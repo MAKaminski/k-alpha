@@ -76,8 +76,11 @@ export function useRealtimeData() {
       const marketOpen = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9AM EST
       const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4PM EST
       
+      // Also fetch data from the last 24 hours to ensure we have some data
+      const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      
       console.log('Current time:', now.toISOString())
-      console.log('Fetching data from:', marketOpen.toISOString(), 'to:', marketClose.toISOString())
+      console.log('Fetching data from:', last24Hours.toISOString(), 'to:', now.toISOString())
       console.log('Market open time:', marketOpen.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       console.log('Market close time:', marketClose.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       
@@ -86,24 +89,24 @@ export function useRealtimeData() {
           .from('quotes')
           .select('*')
           .eq('symbol', 'QQQ')
-          .gte('timestamp', marketOpen.toISOString())
-          .lte('timestamp', marketClose.toISOString())
+          .gte('timestamp', last24Hours.toISOString())
+          .lte('timestamp', now.toISOString())
           .order('timestamp', { ascending: true }),
         
         supabase
           .from('indicators')
           .select('*')
           .eq('symbol', 'QQQ')
-          .gte('timestamp', marketOpen.toISOString())
-          .lte('timestamp', marketClose.toISOString())
+          .gte('timestamp', last24Hours.toISOString())
+          .lte('timestamp', now.toISOString())
           .order('timestamp', { ascending: true }),
         
         supabase
           .from('options')
           .select('*')
           .eq('underlying_symbol', 'QQQ')
-          .gte('timestamp', marketOpen.toISOString())
-          .lte('timestamp', marketClose.toISOString())
+          .gte('timestamp', last24Hours.toISOString())
+          .lte('timestamp', now.toISOString())
           .order('timestamp', { ascending: true })
       ])
 

@@ -70,6 +70,12 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   const optionPadding = optionRange * 0.1
 
   // Process options data for individual series
+  console.log('PriceChart received data:', data.length, 'points')
+  if (data.length > 0) {
+    console.log('First data point:', data[0])
+    console.log('Last data point:', data[data.length - 1])
+  }
+
   const dataWithOptionPrices = data.map(d => {
     // Group calls by strike price for individual series
     const callsByStrike = d.calls.reduce((acc, call) => {
