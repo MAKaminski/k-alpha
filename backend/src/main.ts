@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { CONSTANTS } from './config/constants.js';
 import { SchwabClient } from './services/schwab_client.js';
+import { OptionsClient } from './services/options_client.js';
 import { SupabaseService } from './services/supabase_client.js';
+import { OptionsSupabaseService } from './services/options_supabase.js';
 import { SchwabAuth } from './utils/schwab_auth.js';
 import { log } from './utils/logger.js';
 
@@ -16,7 +18,17 @@ const schwab_client = new SchwabClient(
   () => schwab_auth.get_valid_access_token()
 );
 
+const options_client = new OptionsClient(
+  '',
+  () => schwab_auth.get_valid_access_token()
+);
+
 const supabase = new SupabaseService(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+);
+
+const options_supabase = new OptionsSupabaseService(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_KEY!
 );
@@ -35,8 +47,27 @@ async function fetch_and_store_quote(): Promise<void> {
     });
 
     log(`Stored ${quote.symbol}: $${quote.last_price}`);
+    
+    // Fetch and store 0DTE options data
+    await fetch_and_store_options(quote.last_price);
+    
   } catch (error) {
     log(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function fetch_and_store_options(current_price: number): Promise<void> {
+  try {
+    const options = await options_client.fetch_0dte_options(CONSTANTS.QUOTE_SYMBOL, current_price);
+    
+    if (options.length > 0) {
+      await options_supabase.insert_options(options);
+      log(`Stored ${options.length} 0DTE options for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price}`);
+    } else {
+      log(`No 0DTE options found for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price}`);
+    }
+  } catch (error) {
+    log(`Options error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
