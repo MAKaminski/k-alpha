@@ -14,6 +14,8 @@ export function VolumeChart({ data }: VolumeChartProps) {
   if (data.length > 0) {
     console.log('First volume data point:', data[0])
     console.log('Last volume data point:', data[data.length - 1])
+    console.log('Sample volume data keys:', Object.keys(data[0]))
+    console.log('Sample time values:', data.slice(0, 5).map(d => d.time))
   }
 
   return (
@@ -26,8 +28,6 @@ export function VolumeChart({ data }: VolumeChartProps) {
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
-            type="category"
-            scale="point"
           />
           <YAxis 
             tick={{ fontSize: 12 }}

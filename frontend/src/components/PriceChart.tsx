@@ -74,6 +74,8 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   if (data.length > 0) {
     console.log('First data point:', data[0])
     console.log('Last data point:', data[data.length - 1])
+    console.log('Sample data keys:', Object.keys(data[0]))
+    console.log('Sample time values:', data.slice(0, 5).map(d => d.time))
   }
 
   const dataWithOptionPrices = data.map(d => {
@@ -119,8 +121,6 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
-            type="category"
-            scale="point"
           />
           {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
           <ReferenceArea 
