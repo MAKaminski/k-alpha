@@ -194,6 +194,15 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
           )}
           
           {showOptions && dataWithOptionPrices.length > 0 && (() => {
+            // Debug: Log options data
+            console.log('Options data for chart:', dataWithOptionPrices.map(d => ({
+              time: d.time,
+              calls: d.calls.length,
+              puts: d.puts.length,
+              callStrikes: d.calls.map(c => c.strike_price),
+              putStrikes: d.puts.map(p => p.strike_price)
+            })).slice(0, 3))
+            
             // Get all unique strike prices from all data points
             const allStrikes = new Set<number>()
             
@@ -203,12 +212,20 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             })
             
             const strikes = Array.from(allStrikes).sort((a, b) => a - b)
+            console.log('All strikes found:', strikes)
             
             // Only show strikes closest to current price
             const currentPrice = dataWithOptionPrices[dataWithOptionPrices.length - 1]?.last_price || 0
             const relevantStrikes = strikes
               .filter(strike => Math.abs(strike - currentPrice) <= 20) // Within $20 of current price
               .slice(0, 3) // Show max 3 strikes
+            
+            console.log('Relevant strikes for current price', currentPrice, ':', relevantStrikes)
+            
+            if (relevantStrikes.length === 0) {
+              console.log('No relevant strikes found for options plotting')
+              return null
+            }
             
             return (
               <>
@@ -223,7 +240,9 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
                       const prices = calls.map((c: any) => [c.bid_price, c.ask_price, c.last_price, c.mark_price])
                         .flat()
                         .filter((p: any) => p !== null && p !== undefined && p > 0)
-                      return prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
+                      const avgPrice = prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
+                      console.log(`Call ${strike} at ${d.time}:`, avgPrice)
+                      return avgPrice
                     }}
                     stroke={`hsl(${index * 60}, 70%, 50%)`}
                     strokeWidth={2}
@@ -243,7 +262,9 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
                       const prices = puts.map((p: any) => [p.bid_price, p.ask_price, p.last_price, p.mark_price])
                         .flat()
                         .filter((p: any) => p !== null && p !== undefined && p > 0)
-                      return prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
+                      const avgPrice = prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
+                      console.log(`Put ${strike} at ${d.time}:`, avgPrice)
+                      return avgPrice
                     }}
                     stroke={`hsl(${index * 60 + 180}, 70%, 50%)`}
                     strokeWidth={2}

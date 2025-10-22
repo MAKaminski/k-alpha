@@ -68,28 +68,35 @@ export function useRealtimeData() {
     try {
       setLoading(true)
       
-      // Fetch last 100 data points
+      // Fetch data for the entire trading day (9AM-4PM EST)
+      const today = new Date()
+      const marketOpen = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0) // 9AM EST
+      const marketClose = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0, 0) // 4PM EST
+      
       const [quotesResult, indicatorsResult, optionsResult] = await Promise.all([
         supabase
           .from('quotes')
           .select('*')
           .eq('symbol', 'QQQ')
-          .order('timestamp', { ascending: false })
-          .limit(100),
+          .gte('timestamp', marketOpen.toISOString())
+          .lte('timestamp', marketClose.toISOString())
+          .order('timestamp', { ascending: true }),
         
         supabase
           .from('indicators')
           .select('*')
           .eq('symbol', 'QQQ')
-          .order('timestamp', { ascending: false })
-          .limit(100),
+          .gte('timestamp', marketOpen.toISOString())
+          .lte('timestamp', marketClose.toISOString())
+          .order('timestamp', { ascending: true }),
         
         supabase
           .from('options')
           .select('*')
           .eq('underlying_symbol', 'QQQ')
-          .order('timestamp', { ascending: false })
-          .limit(1000)
+          .gte('timestamp', marketOpen.toISOString())
+          .lte('timestamp', marketClose.toISOString())
+          .order('timestamp', { ascending: true })
       ])
 
       if (quotesResult.error) throw quotesResult.error
@@ -214,6 +221,7 @@ export function useRealtimeData() {
     })
 
     // Process options
+    console.log('Processing options:', options.length, 'options found')
     options.forEach(option => {
       const time = new Date(option.timestamp)
       
@@ -231,13 +239,16 @@ export function useRealtimeData() {
         } else {
           existing.puts.push(option)
         }
+        console.log(`Added ${option.option_type} option for ${key}:`, option.strike_price, option.bid_price, option.ask_price)
+      } else {
+        console.log(`No matching quote for option at ${key}`)
       }
     })
 
     // Convert to array and sort by timestamp
     return Array.from(dataMap.values())
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      .slice(-100) // Keep last 100 points
+      // Don't limit to 100 points - show full trading day
   }
 
   const handleNewQuote = (payload: any) => {

@@ -7,9 +7,12 @@ interface VolumeChartProps {
 }
 
 export function VolumeChart({ data }: VolumeChartProps) {
+  // Debug: Log volume data
+  console.log('Volume chart data:', data.map(d => ({ time: d.time, volume: d.volume })).slice(0, 5))
+  
   return (
     <div className="w-full h-48 bg-white rounded-lg shadow-lg p-4">
-      <h3 className="text-lg font-semibold mb-4">Volume</h3>
+      <h3 className="text-lg font-semibold mb-4">Volume (Interval)</h3>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
