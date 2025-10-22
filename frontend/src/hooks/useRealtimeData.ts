@@ -302,14 +302,14 @@ export function useRealtimeData() {
           newData.push({
             timestamp: quote.timestamp,
             time: timeLabel,
-            last_price: quote.last_price,
+            last_price: parseFloat(quote.last_price.toString()),
             sma9: null,
             session_vwap: null,
             volume: intervalVolume, // Use interval volume
             calls: [],
             puts: [],
-            bid: quote.bid_price,
-            ask: quote.ask_price
+            bid: parseFloat(quote.bid_price.toString()),
+            ask: parseFloat(quote.ask_price.toString())
           })
         }
         
@@ -328,9 +328,9 @@ export function useRealtimeData() {
         
         const existingIndex = newData.findIndex(d => d.timestamp === key)
         if (existingIndex >= 0) {
-          newData[existingIndex].sma9 = indicator.sma9
-          newData[existingIndex].session_vwap = indicator.session_vwap
-          newData[existingIndex].last_price = indicator.last_price
+          newData[existingIndex].sma9 = indicator.sma9 ? parseFloat(indicator.sma9.toString()) : null
+          newData[existingIndex].session_vwap = indicator.session_vwap ? parseFloat(indicator.session_vwap.toString()) : null
+          newData[existingIndex].last_price = parseFloat(indicator.last_price.toString())
           newData[existingIndex].volume = indicator.volume
         }
         
