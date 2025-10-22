@@ -95,14 +95,15 @@ export function useRealtimeData() {
         sample: allDataResult.data?.[0]
       })
 
-      // Get recent data regardless of market hours status
+      // Get all data for today's session
       const [indicatorsResult] = await Promise.all([
         supabase
           .from('indicators')
           .select('*')
           .eq('symbol', 'QQQ')
+          .eq('session_date', today.toISOString().split('T')[0]) // Get all data for today
           .order('timestamp', { ascending: true })
-          .limit(100) // Get last 100 records regardless of time
+          .limit(10000) // Increase limit to handle full day data
       ])
 
       console.log('Supabase query result:', {

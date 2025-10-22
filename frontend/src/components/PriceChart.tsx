@@ -26,37 +26,7 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   const minPriceRounded = Math.floor(minPrice) - 1
   const maxPriceRounded = Math.ceil(maxPrice) + 1
 
-  // Get current date for trading hours calculation
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  
-  // Calculate trading hours (9am-4pm EST)
-  const tradingStart = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9am EST
-  const tradingEnd = new Date(today.getTime() + 15 * 60 * 60 * 1000) // 3pm EST
-  const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4pm EST
-  
-  // Create time labels for full market hours (9am-4pm) - every 30 minutes
-  const createTimeLabels = () => {
-    const labels = []
-    for (let hour = 9; hour <= 16; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const time = new Date(today.getTime() + hour * 60 * 60 * 1000 + minute * 60 * 1000)
-        const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
-        labels.push({ time: timeLabel, timestamp: time })
-      }
-    }
-    return labels
-  }
-  
-  const marketHoursLabels = createTimeLabels()
-  
-  // Format times for chart - convert to actual time format
-  const formatTimeForChart = (date: Date) => {
-    const hours = date.getHours()
-    const minutes = date.getMinutes()
-    const seconds = date.getSeconds()
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-  }
+  // Remove artificial time generation - let the chart use actual data range
 
   // Calculate options price range for right axis
   const allOptions = data.flatMap(d => [...d.calls, ...d.puts])
@@ -105,25 +75,15 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     })))
   }
 
-  // Create a complete dataset with all market hours (9am-4pm) filled in
+  // Create a complete dataset with actual data range
   const createCompleteDataset = () => {
-    // Instead of creating artificial time slots, use the actual data but ensure we have the full time range
-    // First, let's sort the valid data by time
+    // Sort the valid data by time
     const sortedData = [...validData].sort((a, b) => {
       // Parse time strings to compare them properly
       const timeA = a.time.split(':').map(Number)
       const timeB = b.time.split(':').map(Number)
       return (timeA[0] * 3600 + timeA[1] * 60 + timeA[2]) - (timeB[0] * 3600 + timeB[1] * 60 + timeB[2])
     })
-    
-    // Create time labels for full market hours (9am-4pm) for X-axis
-    const marketHoursLabels = []
-    for (let hour = 9; hour <= 16; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
-        marketHoursLabels.push(timeLabel)
-      }
-    }
     
     // Return the actual data with proper time formatting
     return sortedData.map(d => ({
@@ -191,25 +151,7 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             interval="preserveStartEnd"
             type="category"
           />
-          {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
-          <ReferenceArea 
-            x1={formatTimeForChart(tradingStart)} 
-            x2={formatTimeForChart(new Date(today.getTime() + 10 * 60 * 60 * 1000))} 
-            y1={minPriceRounded} 
-            y2={maxPriceRounded} 
-            fill="rgba(128, 128, 128, 0.1)" 
-            stroke="rgba(128, 128, 128, 0.3)"
-            strokeDasharray="2 2"
-          />
-          <ReferenceArea 
-            x1={formatTimeForChart(tradingEnd)} 
-            x2={formatTimeForChart(marketClose)} 
-            y1={minPriceRounded} 
-            y2={maxPriceRounded} 
-            fill="rgba(128, 128, 128, 0.1)" 
-            stroke="rgba(128, 128, 128, 0.3)"
-            strokeDasharray="2 2"
-          />
+          {/* Removed artificial reference areas - let chart use actual data range */}
           <YAxis 
             yAxisId="price"
             orientation="left"
