@@ -140,12 +140,16 @@ export function useRealtimeData() {
     indicators.forEach((indicator, index) => {
       const time = new Date(indicator.timestamp)
       
-      // Format time as HH:MM:SS for consistent display
-      const hours = time.getHours()
-      const minutes = time.getMinutes()
-      const seconds = time.getSeconds()
+      // Format time as HH:MM:SS in EST for consistent display
+      const estTime = time.toLocaleString('en-US', { 
+        timeZone: 'America/New_York',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
       
-      const timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      const timeLabel = estTime
       
       // Use VWAP as the price data (this is what we have in the database)
       const price = indicator.vwap
