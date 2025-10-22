@@ -16,6 +16,8 @@ backend/.schwab_tokens.json
 dist/
 .next/
 build/
+backend/dist/
+frontend/dist/
 
 # Logs
 *.log
@@ -34,4 +36,7 @@ logs/
 # IDE
 .vscode/
 .idea/
+
+# Cache files
+.cache_ggshield
 

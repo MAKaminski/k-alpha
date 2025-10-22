@@ -13,10 +13,17 @@ export interface Quote {
 
 export interface Indicator {
   id: number
-  ticker: string
+  symbol: string
   timestamp: string
-  sma9: number
-  vwap: number
+  last_price: number
+  volume: number
+  sma9: number | null
+  session_vwap: number | null
+  session_date: string
+  is_market_hours: boolean
+  session_start_time: string | null
+  session_volume: number
+  session_pv_sum: number
   created_at: string
 }
 

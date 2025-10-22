@@ -88,7 +88,7 @@ export function useRealtimeData() {
         supabase
           .from('indicators')
           .select('*')
-          .eq('ticker', 'QQQ')
+          .eq('symbol', 'QQQ')
           .gte('timestamp', last7Days.toISOString())
           .lte('timestamp', now.toISOString())
           .order('timestamp', { ascending: true })
@@ -147,20 +147,20 @@ export function useRealtimeData() {
       
       const timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
       
-      // Create a mock price based on VWAP for visualization
-      const mockPrice = (indicator.vwap || 600) + (Math.random() - 0.5) * 2 // Add some variation
+      // Use actual price data from indicators
+      const price = indicator.last_price
       
       result.push({
         timestamp: indicator.timestamp,
         time: timeLabel,
-        last_price: mockPrice,
+        last_price: price,
         sma9: indicator.sma9,
-        session_vwap: indicator.vwap, // Map vwap to session_vwap for chart display
-        volume: Math.floor(Math.random() * 1000000), // Mock volume data
+        session_vwap: indicator.session_vwap,
+        volume: indicator.volume,
         calls: [],
         puts: [],
-        bid: mockPrice - 0.01,
-        ask: mockPrice + 0.01
+        bid: price - 0.01,
+        ask: price + 0.01
       })
     })
     
@@ -249,7 +249,7 @@ export function useRealtimeData() {
 
   const handleNewIndicator = (payload: any) => {
     const indicator = payload.new as Indicator
-    if (indicator.ticker === 'QQQ') {
+    if (indicator.symbol === 'QQQ') {
       setChartData(prev => {
         const newData = [...prev]
         const time = new Date(indicator.timestamp)
@@ -258,8 +258,8 @@ export function useRealtimeData() {
         const existingIndex = newData.findIndex(d => d.timestamp === key)
         if (existingIndex >= 0) {
           newData[existingIndex].sma9 = indicator.sma9
-          newData[existingIndex].session_vwap = indicator.vwap
-          // Note: indicators table doesn't have volume, so we'll keep existing volume
+          newData[existingIndex].session_vwap = indicator.session_vwap
+          newData[existingIndex].volume = indicator.volume
         }
         
         return newData
