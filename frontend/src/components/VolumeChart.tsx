@@ -28,11 +28,49 @@ export function VolumeChart({ data }: VolumeChartProps) {
   
   console.log('Valid volume data points after filtering:', validData.length, 'out of', data.length)
 
+  // Create a complete dataset with all market hours (9am-4pm) filled in
+  const createCompleteDataset = () => {
+    const completeData = []
+    
+    // Create entries for every 30 minutes from 9am to 4pm
+    for (let hour = 9; hour <= 16; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
+        
+        // Find matching data point or create empty one
+        const matchingData = validData.find(d => {
+          // Try to match time format - could be "Xm Ys ago" or "HH:MM:SS"
+          if (d.time.includes(':')) {
+            return d.time.startsWith(timeLabel.substring(0, 5)) // Match HH:MM
+          }
+          return false
+        })
+        
+        if (matchingData) {
+          completeData.push({
+            ...matchingData,
+            time: timeLabel // Standardize time format
+          })
+        } else {
+          // Create empty data point for missing time slots
+          completeData.push({
+            time: timeLabel,
+            volume: 0
+          })
+        }
+      }
+    }
+    
+    return completeData
+  }
+  
+  const completeData = createCompleteDataset()
+
   return (
     <div className="w-full h-48 bg-white rounded-lg shadow-lg p-4">
       <h3 className="text-lg font-semibold mb-4">Volume (Interval)</h3>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={validData}>
+        <BarChart data={completeData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="time" 

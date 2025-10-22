@@ -35,27 +35,27 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   const tradingEnd = new Date(today.getTime() + 15 * 60 * 60 * 1000) // 3pm EST
   const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4pm EST
   
-  // Create time labels for full market hours (9am-4pm)
-  const marketHoursLabels = []
-  for (let hour = 9; hour <= 16; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) { // Every 30 minutes
-      const time = new Date(today.getTime() + hour * 60 * 60 * 1000 + minute * 60 * 1000)
-      const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
-      marketHoursLabels.push(timeLabel)
+  // Create time labels for full market hours (9am-4pm) - every 30 minutes
+  const createTimeLabels = () => {
+    const labels = []
+    for (let hour = 9; hour <= 16; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const time = new Date(today.getTime() + hour * 60 * 60 * 1000 + minute * 60 * 1000)
+        const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
+        labels.push({ time: timeLabel, timestamp: time })
+      }
     }
+    return labels
   }
   
-  // Format times for chart
+  const marketHoursLabels = createTimeLabels()
+  
+  // Format times for chart - convert to actual time format
   const formatTimeForChart = (date: Date) => {
-    const diffMs = now.getTime() - date.getTime()
-    const diffMinutes = Math.floor(diffMs / 60000)
-    const diffSeconds = Math.floor((diffMs % 60000) / 1000)
-    
-    if (diffMinutes > 0) {
-      return `${diffMinutes}m ${diffSeconds}s ago`
-    } else {
-      return `${diffSeconds}s ago`
-    }
+    const hours = date.getHours()
+    const minutes = date.getMinutes()
+    const seconds = date.getSeconds()
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
 
   // Calculate options price range for right axis
@@ -104,8 +104,51 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
       session_vwap: d.session_vwap
     })))
   }
+
+  // Create a complete dataset with all market hours (9am-4pm) filled in
+  const createCompleteDataset = () => {
+    const completeData = []
+    
+    // Create entries for every 30 minutes from 9am to 4pm
+    for (let hour = 9; hour <= 16; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
+        
+        // Find matching data point or create empty one
+        const matchingData = validData.find(d => {
+          // Try to match time format - could be "Xm Ys ago" or "HH:MM:SS"
+          if (d.time.includes(':')) {
+            return d.time.startsWith(timeLabel.substring(0, 5)) // Match HH:MM
+          }
+          return false
+        })
+        
+        if (matchingData) {
+          completeData.push({
+            ...matchingData,
+            time: timeLabel // Standardize time format
+          })
+        } else {
+          // Create empty data point for missing time slots
+          completeData.push({
+            time: timeLabel,
+            last_price: null,
+            sma9: null,
+            session_vwap: null,
+            volume: 0,
+            calls: [],
+            puts: []
+          })
+        }
+      }
+    }
+    
+    return completeData
+  }
   
-  const dataWithOptionPrices = validData.map(d => {
+  const completeData = createCompleteDataset()
+  
+  const dataWithOptionPrices = completeData.map(d => {
     // Group calls by strike price for individual series
     const callsByStrike = d.calls.reduce((acc, call) => {
       const strike = call.strike_price
@@ -160,8 +203,9 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
-            domain={['9:00:00', '16:00:00']}
             type="category"
+            domain={['9:00:00', '16:00:00']}
+            ticks={marketHoursLabels.map(label => label.time)}
           />
           {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
           <ReferenceArea 
