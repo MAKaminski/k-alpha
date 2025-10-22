@@ -88,7 +88,7 @@ export function useRealtimeData() {
         supabase
           .from('indicators')
           .select('*')
-          .eq('ticker', 'QQQ')
+          .eq('symbol', 'QQQ')
           .gte('timestamp', last7Days.toISOString())
           .lte('timestamp', now.toISOString())
           .order('timestamp', { ascending: true })
@@ -151,16 +151,16 @@ export function useRealtimeData() {
       
       const timeLabel = estTime
       
-      // Use VWAP as the price data (this is what we have in the database)
-      const price = indicator.vwap
+      // Use the actual price data from the database
+      const price = indicator.last_price
       
       result.push({
         timestamp: indicator.timestamp,
         time: timeLabel,
         last_price: price,
         sma9: indicator.sma9,
-        session_vwap: indicator.vwap, // Use vwap as session_vwap
-        volume: 1000000, // Mock volume since we don't have it in indicators table
+        session_vwap: indicator.session_vwap,
+        volume: indicator.volume,
         calls: [],
         puts: [],
         bid: price - 0.01,
@@ -265,7 +265,7 @@ export function useRealtimeData() {
 
   const handleNewIndicator = (payload: any) => {
     const indicator = payload.new as Indicator
-    if (indicator.ticker === 'QQQ') {
+    if (indicator.symbol === 'QQQ') {
       setChartData(prev => {
         const newData = [...prev]
         const time = new Date(indicator.timestamp)
@@ -274,9 +274,9 @@ export function useRealtimeData() {
         const existingIndex = newData.findIndex(d => d.timestamp === key)
         if (existingIndex >= 0) {
           newData[existingIndex].sma9 = indicator.sma9
-          newData[existingIndex].session_vwap = indicator.vwap
-          newData[existingIndex].last_price = indicator.vwap
-          // Note: volume is mocked since indicators table doesn't have it
+          newData[existingIndex].session_vwap = indicator.session_vwap
+          newData[existingIndex].last_price = indicator.last_price
+          newData[existingIndex].volume = indicator.volume
         }
         
         return newData
