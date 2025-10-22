@@ -160,6 +160,8 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
+            domain={['9:00:00', '16:00:00']}
+            type="category"
           />
           {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
           <ReferenceArea 
