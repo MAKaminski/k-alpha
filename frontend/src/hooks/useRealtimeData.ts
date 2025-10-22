@@ -147,21 +147,23 @@ export function useRealtimeData() {
       if (index > 0) {
         const prevQuote = sortedQuotes[index - 1]
         intervalVolume = Math.max(0, quote.volume - prevQuote.volume)
+        console.log(`Volume calc: Current=${quote.volume}, Prev=${prevQuote.volume}, Interval=${intervalVolume}`)
       } else {
         // For the first quote, use the total volume as interval volume
         intervalVolume = quote.volume
+        console.log(`First quote volume: ${intervalVolume}`)
       }
       
-      // Format time as trading hours (9am-4pm EST) with 30-minute increments
+      // Format time as trading hours (9am-4pm EST) with actual time progression
       const estTime = new Date(time.getTime() - (time.getTimezoneOffset() * 60000) + (5 * 60 * 60 * 1000)) // Convert to EST
       const hours = estTime.getHours()
       const minutes = estTime.getMinutes()
+      const seconds = estTime.getSeconds()
       
       let timeLabel: string
       if (hours >= 9 && hours < 16) {
-        // During trading hours, show time in 30-minute increments
-        const displayMinutes = Math.floor(minutes / 30) * 30
-        timeLabel = `${hours}:${displayMinutes.toString().padStart(2, '0')}`
+        // During trading hours, show actual time with minute precision
+        timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
       } else {
         // Outside trading hours, show relative time
         const diffMs = now.getTime() - time.getTime()
@@ -205,6 +207,9 @@ export function useRealtimeData() {
         existing.sma9 = indicator.sma9
         existing.session_vwap = indicator.session_vwap
         existing.volume = indicator.volume
+        console.log('Indicator matched:', key, 'VWAP:', indicator.session_vwap)
+      } else {
+        console.log('Indicator not matched:', key, 'VWAP:', indicator.session_vwap)
       }
     })
 
@@ -260,16 +265,16 @@ export function useRealtimeData() {
           newData[existingIndex].bid = quote.bid_price
           newData[existingIndex].ask = quote.ask_price
         } else {
-          // Format time as trading hours (9am-4pm EST) with 30-minute increments
+          // Format time as trading hours (9am-4pm EST) with actual time progression
           const estTime = new Date(time.getTime() - (time.getTimezoneOffset() * 60000) + (5 * 60 * 60 * 1000)) // Convert to EST
           const hours = estTime.getHours()
           const minutes = estTime.getMinutes()
+          const seconds = estTime.getSeconds()
           
           let timeLabel: string
           if (hours >= 9 && hours < 16) {
-            // During trading hours, show time in 30-minute increments
-            const displayMinutes = Math.floor(minutes / 30) * 30
-            timeLabel = `${hours}:${displayMinutes.toString().padStart(2, '0')}`
+            // During trading hours, show actual time with minute precision
+            timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
           } else {
             // Outside trading hours, show relative time
             const now = new Date()
