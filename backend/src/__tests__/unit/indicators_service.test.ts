@@ -8,14 +8,14 @@ const mockSupabaseClient = {
       eq: jest.fn(() => ({
         order: jest.fn(() => ({
           limit: jest.fn(() => ({
-            data: [],
+            data: [] as any[],
             error: null
           }))
         }))
       }))
     })),
     insert: jest.fn(() => ({
-      data: [],
+      data: [] as any[],
       error: null
     }))
   }))
@@ -80,7 +80,7 @@ describe('IndicatorsService', () => {
           eq: jest.fn(() => ({
             order: jest.fn(() => ({
               limit: jest.fn(() => ({
-                data: null,
+                data: null as any,
                 error: { message: 'Database error' }
               }))
             }))
@@ -111,7 +111,7 @@ describe('IndicatorsService', () => {
           eq: jest.fn(() => ({
             order: jest.fn(() => ({
               limit: jest.fn(() => ({
-                data: mockData,
+                data: mockData as any,
                 error: null
               }))
             }))
