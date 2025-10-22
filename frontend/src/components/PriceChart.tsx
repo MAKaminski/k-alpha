@@ -138,18 +138,28 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     return optionSeries
   })
 
+  // Debug: Log the final data being passed to the chart
+  console.log('Chart data being passed to LineChart:', dataWithOptionPrices.length, 'points')
+  if (dataWithOptionPrices.length > 0) {
+    console.log('First chart data point:', dataWithOptionPrices[0])
+    console.log('Last chart data point:', dataWithOptionPrices[dataWithOptionPrices.length - 1])
+  }
+
   return (
     <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
       <h3 className="text-lg font-semibold mb-4">QQQ Price & Options</h3>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={dataWithOptionPrices}>
+      {validData.length === 0 ? (
+        <div className="flex items-center justify-center h-full text-gray-500">
+          <p>No data available</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={dataWithOptionPrices}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
-            type="category"
-            scale="point"
           />
           {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
           <ReferenceArea 
@@ -326,7 +336,8 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             )
           })()}
         </LineChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      )}
     </div>
   )
 }

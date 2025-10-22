@@ -255,7 +255,8 @@ export class IndicatorsService {
    * Get existing session data for VWAP calculation
    */
   private async getSessionData(symbol: string, session_date: string): Promise<{ volume: number; pv_sum: number; last_total_volume?: number }> {
-    const { data, error } = await this.supabase
+    // First try to get data with last_total_volume column
+    let { data, error } = await this.supabase
       .from('indicators')
       .select('session_volume, session_pv_sum, last_total_volume')
       .eq('symbol', symbol)
@@ -263,6 +264,22 @@ export class IndicatorsService {
       .eq('is_market_hours', true)
       .order('timestamp', { ascending: false })
       .limit(1);
+
+    // If that fails, try without last_total_volume (fallback for older schema)
+    if (error && error.message.includes('last_total_volume')) {
+      console.log('last_total_volume column not found, falling back to basic query');
+      const fallbackResult = await this.supabase
+        .from('indicators')
+        .select('session_volume, session_pv_sum')
+        .eq('symbol', symbol)
+        .eq('session_date', session_date)
+        .eq('is_market_hours', true)
+        .order('timestamp', { ascending: false })
+        .limit(1);
+      
+      data = fallbackResult.data;
+      error = fallbackResult.error;
+    }
 
     if (error) {
       throw new Error(`Error fetching session data: ${error.message}`);
