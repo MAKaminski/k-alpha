@@ -69,17 +69,17 @@ export class OptionsClient {
   }
 
   /**
-   * Calculate strike prices for ATM ±5 strikes
+   * Calculate strike prices for ATM ±20 strikes with $1 increments
    */
   private calculate_strikes(current_price: number): number[] {
     const strikes: number[] = [];
     
-    // Round current price to nearest $0.50 for options
-    const rounded_price = Math.round(current_price * 2) / 2;
+    // Round current price to nearest dollar for options
+    const rounded_price = Math.round(current_price);
     
-    // Generate strikes: ATM-5, ATM-4, ..., ATM, ..., ATM+4, ATM+5
-    for (let i = -5; i <= 5; i++) {
-      strikes.push(rounded_price + (i * 0.5));
+    // Generate strikes: ATM-20, ATM-19, ..., ATM, ..., ATM+19, ATM+20
+    for (let i = -20; i <= 20; i++) {
+      strikes.push(rounded_price + i);
     }
     
     return strikes;
@@ -140,7 +140,7 @@ export class OptionsClient {
           );
 
           if (response.ok) {
-            const data = await response.json();
+            const data = await response.json() as any;
             const today_key = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}:0`;
             
             if (data.callExpDateMap && data.callExpDateMap[today_key]) {
@@ -158,11 +158,11 @@ export class OptionsClient {
       // Remove duplicates and sort
       const unique_available_strikes = [...new Set(available_strikes)].sort((a, b) => a - b);
       
-      // Find strikes closest to current price (±5 range)
+      // Find strikes closest to current price (±20 range)
       const closest_strikes = unique_available_strikes
         .map(strike => ({ strike, diff: Math.abs(strike - current_price) }))
         .sort((a, b) => a.diff - b.diff)
-        .slice(0, 11) // Get up to 11 strikes
+        .slice(0, 41) // Get up to 41 strikes (±20)
         .map(item => item.strike);
       
       console.log(`Available strikes: ${unique_available_strikes.join(', ')}`);
