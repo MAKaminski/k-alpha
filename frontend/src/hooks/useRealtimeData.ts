@@ -126,8 +126,11 @@ export function useRealtimeData() {
     const marketOpen = new Date(today.getTime() + 8 * 60 * 60 * 1000) // 8am EST
     const marketEnd = new Date(today.getTime() + 17 * 60 * 60 * 1000) // 5pm EST
 
-    // Process quotes
-    quotes.forEach(quote => {
+    // Sort quotes by timestamp to calculate interval volume
+    const sortedQuotes = [...quotes].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+    // Process quotes and calculate interval volume
+    sortedQuotes.forEach((quote, index) => {
       const time = new Date(quote.timestamp)
       
       // Only include data within trading day (8am-5pm EST)
@@ -137,16 +140,26 @@ export function useRealtimeData() {
       
       const key = time.toISOString()
       
-      // Format time as static trading hours (9am-4pm EST)
+      // Calculate interval volume (volume traded since last tick)
+      let intervalVolume = 0
+      if (index > 0) {
+        const prevQuote = sortedQuotes[index - 1]
+        intervalVolume = Math.max(0, quote.volume - prevQuote.volume)
+      } else {
+        // For the first quote, use the total volume as interval volume
+        intervalVolume = quote.volume
+      }
+      
+      // Format time as trading hours (9am-4pm EST) with 30-minute increments
       const estTime = new Date(time.getTime() - (time.getTimezoneOffset() * 60000) + (5 * 60 * 60 * 1000)) // Convert to EST
       const hours = estTime.getHours()
       const minutes = estTime.getMinutes()
-      const seconds = estTime.getSeconds()
       
       let timeLabel: string
       if (hours >= 9 && hours < 16) {
-        // During trading hours, show actual time
-        timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        // During trading hours, show time in 30-minute increments
+        const displayMinutes = Math.floor(minutes / 30) * 30
+        timeLabel = `${hours}:${displayMinutes.toString().padStart(2, '0')}`
       } else {
         // Outside trading hours, show relative time
         const diffMs = now.getTime() - time.getTime()
@@ -166,7 +179,7 @@ export function useRealtimeData() {
         last_price: quote.last_price,
         sma9: null,
         session_vwap: null,
-        volume: quote.volume,
+        volume: intervalVolume, // Use interval volume instead of cumulative
         calls: [],
         puts: [],
         bid: quote.bid_price,
@@ -235,20 +248,25 @@ export function useRealtimeData() {
         const existingIndex = newData.findIndex(d => d.timestamp === key)
         if (existingIndex >= 0) {
           newData[existingIndex].last_price = quote.last_price
-          newData[existingIndex].volume = quote.volume
+          // Calculate interval volume for existing data point
+          if (existingIndex > 0) {
+            const prevQuote = newData[existingIndex - 1]
+            const intervalVolume = Math.max(0, quote.volume - (prevQuote.volume + (prevQuote.volume || 0)))
+            newData[existingIndex].volume = intervalVolume
+          }
           newData[existingIndex].bid = quote.bid_price
           newData[existingIndex].ask = quote.ask_price
         } else {
-          // Format time as static trading hours (9am-4pm EST)
+          // Format time as trading hours (9am-4pm EST) with 30-minute increments
           const estTime = new Date(time.getTime() - (time.getTimezoneOffset() * 60000) + (5 * 60 * 60 * 1000)) // Convert to EST
           const hours = estTime.getHours()
           const minutes = estTime.getMinutes()
-          const seconds = estTime.getSeconds()
           
           let timeLabel: string
           if (hours >= 9 && hours < 16) {
-            // During trading hours, show actual time
-            timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+            // During trading hours, show time in 30-minute increments
+            const displayMinutes = Math.floor(minutes / 30) * 30
+            timeLabel = `${hours}:${displayMinutes.toString().padStart(2, '0')}`
           } else {
             // Outside trading hours, show relative time
             const now = new Date()
@@ -263,13 +281,24 @@ export function useRealtimeData() {
             }
           }
           
+          // Calculate interval volume for new data point
+          let intervalVolume = 0
+          if (newData.length > 0) {
+            const lastData = newData[newData.length - 1]
+            // Get the cumulative volume from the last data point
+            const lastCumulativeVolume = lastData.volume + (lastData.volume || 0) // This is a rough estimate
+            intervalVolume = Math.max(0, quote.volume - lastCumulativeVolume)
+          } else {
+            intervalVolume = quote.volume
+          }
+          
           newData.push({
             timestamp: quote.timestamp,
             time: timeLabel,
             last_price: quote.last_price,
             sma9: null,
             session_vwap: null,
-            volume: quote.volume,
+            volume: intervalVolume, // Use interval volume
             calls: [],
             puts: [],
             bid: quote.bid_price,

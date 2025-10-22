@@ -11,12 +11,19 @@ interface PriceChartProps {
 }
 
 export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }: PriceChartProps) {
-  // Calculate price range for left axis
-  const prices = data.map(d => d.last_price).filter(Boolean)
-  const minPrice = Math.min(...prices)
-  const maxPrice = Math.max(...prices)
-  const priceRange = maxPrice - minPrice
-  const padding = priceRange * 0.1
+  // Calculate price range for left axis including all price data (QQQ, SMA9, VWAP)
+  const allPrices = data.flatMap(d => [
+    d.last_price,
+    d.sma9,
+    d.session_vwap
+  ]).filter((price): price is number => price !== null && price !== undefined && !isNaN(price))
+  
+  const minPrice = Math.min(...allPrices)
+  const maxPrice = Math.max(...allPrices)
+  
+  // Add +/- $1 buffer rounded to nearest dollar
+  const minPriceRounded = Math.floor(minPrice) - 1
+  const maxPriceRounded = Math.ceil(maxPrice) + 1
 
   // Get current date for trading hours calculation
   const now = new Date()
@@ -101,8 +108,8 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
           <ReferenceArea 
             x1={formatTimeForChart(tradingStart)} 
             x2={formatTimeForChart(new Date(today.getTime() + 10 * 60 * 60 * 1000))} 
-            y1={minPrice - padding} 
-            y2={maxPrice + padding} 
+            y1={minPriceRounded} 
+            y2={maxPriceRounded} 
             fill="rgba(128, 128, 128, 0.1)" 
             stroke="rgba(128, 128, 128, 0.3)"
             strokeDasharray="2 2"
@@ -110,8 +117,8 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
           <ReferenceArea 
             x1={formatTimeForChart(tradingEnd)} 
             x2={formatTimeForChart(marketClose)} 
-            y1={minPrice - padding} 
-            y2={maxPrice + padding} 
+            y1={minPriceRounded} 
+            y2={maxPriceRounded} 
             fill="rgba(128, 128, 128, 0.1)" 
             stroke="rgba(128, 128, 128, 0.3)"
             strokeDasharray="2 2"
@@ -119,7 +126,7 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
           <YAxis 
             yAxisId="price"
             orientation="left"
-            domain={[minPrice - padding, maxPrice + padding]}
+            domain={[minPriceRounded, maxPriceRounded]}
             tick={{ fontSize: 12 }}
             tickFormatter={(value) => `$${Math.round(value)}`}
             label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }}
@@ -187,26 +194,31 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
           )}
           
           {showOptions && dataWithOptionPrices.length > 0 && (() => {
-            // Get all unique strike prices from the first data point
-            const firstData = dataWithOptionPrices[0]
+            // Get all unique strike prices from all data points
             const allStrikes = new Set<number>()
             
             dataWithOptionPrices.forEach(d => {
-              Object.keys(d.callsByStrike).forEach(strike => allStrikes.add(parseFloat(strike)))
-              Object.keys(d.putsByStrike).forEach(strike => allStrikes.add(parseFloat(strike)))
+              d.calls.forEach(call => allStrikes.add(call.strike_price))
+              d.puts.forEach(put => allStrikes.add(put.strike_price))
             })
             
             const strikes = Array.from(allStrikes).sort((a, b) => a - b)
             
+            // Only show strikes closest to current price
+            const currentPrice = dataWithOptionPrices[dataWithOptionPrices.length - 1]?.last_price || 0
+            const relevantStrikes = strikes
+              .filter(strike => Math.abs(strike - currentPrice) <= 20) // Within $20 of current price
+              .slice(0, 3) // Show max 3 strikes
+            
             return (
               <>
-                {strikes.slice(0, 5).map((strike, index) => (
+                {relevantStrikes.map((strike, index) => (
                   <Line
                     key={`call-${strike}`}
                     yAxisId="options"
                     type="monotone"
                     dataKey={(d: any) => {
-                      const calls = d.callsByStrike[strike] || []
+                      const calls = d.calls.filter((c: any) => c.strike_price === strike)
                       if (calls.length === 0) return null
                       const prices = calls.map((c: any) => [c.bid_price, c.ask_price, c.last_price, c.mark_price])
                         .flat()
@@ -214,19 +226,19 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
                       return prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
                     }}
                     stroke={`hsl(${index * 60}, 70%, 50%)`}
-                    strokeWidth={1}
+                    strokeWidth={2}
                     dot={false}
                     name={`Call $${strike}`}
                     connectNulls={false}
                   />
                 ))}
-                {strikes.slice(0, 5).map((strike, index) => (
+                {relevantStrikes.map((strike, index) => (
                   <Line
                     key={`put-${strike}`}
                     yAxisId="options"
                     type="monotone"
                     dataKey={(d: any) => {
-                      const puts = d.putsByStrike[strike] || []
+                      const puts = d.puts.filter((p: any) => p.strike_price === strike)
                       if (puts.length === 0) return null
                       const prices = puts.map((p: any) => [p.bid_price, p.ask_price, p.last_price, p.mark_price])
                         .flat()
@@ -234,7 +246,7 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
                       return prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
                     }}
                     stroke={`hsl(${index * 60 + 180}, 70%, 50%)`}
-                    strokeWidth={1}
+                    strokeWidth={2}
                     dot={false}
                     name={`Put $${strike}`}
                     connectNulls={false}
