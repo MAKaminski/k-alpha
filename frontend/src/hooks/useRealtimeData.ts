@@ -1,17 +1,41 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Quote, Indicator, Option, ChartData } from '../types/data'
-import { format } from 'date-fns'
+// import { format } from 'date-fns'
 
 export function useRealtimeData() {
   const [chartData, setChartData] = useState<ChartData[]>([])
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [latestQuote, setLatestQuote] = useState<Quote | null>(null)
 
   // Update current time every second
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
+      
+      // Update time labels for chart data
+      setChartData(prev => {
+        const now = new Date()
+        return prev.map(item => {
+          const time = new Date(item.timestamp)
+          const diffMs = now.getTime() - time.getTime()
+          const diffMinutes = Math.floor(diffMs / 60000)
+          const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+          
+          let timeLabel: string
+          if (diffMinutes > 0) {
+            timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
+          } else {
+            timeLabel = `${diffSeconds}s ago`
+          }
+          
+          return {
+            ...item,
+            time: timeLabel
+          }
+        })
+      })
     }, 1000)
 
     return () => clearInterval(timer)
@@ -95,6 +119,11 @@ export function useRealtimeData() {
       const combinedData = combineData(quotes, indicators, options)
       setChartData(combinedData)
       
+      // Set latest quote for display
+      if (quotes.length > 0) {
+        setLatestQuote(quotes[0])
+      }
+      
     } catch (error) {
       console.error('Error fetching initial data:', error)
     } finally {
@@ -105,21 +134,36 @@ export function useRealtimeData() {
   const combineData = (quotes: Quote[], indicators: Indicator[], options: Option[]): ChartData[] => {
     // Create a map of timestamps to data points
     const dataMap = new Map<string, ChartData>()
+    const now = new Date()
 
     // Process quotes
     quotes.forEach(quote => {
       const time = new Date(quote.timestamp)
       const key = time.toISOString()
       
+      // Calculate relative time from now
+      const diffMs = now.getTime() - time.getTime()
+      const diffMinutes = Math.floor(diffMs / 60000)
+      const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+      
+      let timeLabel: string
+      if (diffMinutes > 0) {
+        timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
+      } else {
+        timeLabel = `${diffSeconds}s ago`
+      }
+      
       dataMap.set(key, {
         timestamp: quote.timestamp,
-        time: format(time, 'HH:mm:ss'),
+        time: timeLabel,
         last_price: quote.last_price,
         sma9: null,
         session_vwap: null,
         volume: quote.volume,
         calls: [],
-        puts: []
+        puts: [],
+        bid: quote.bid_price,
+        ask: quote.ask_price
       })
     })
 
@@ -160,6 +204,9 @@ export function useRealtimeData() {
   const handleNewQuote = (payload: any) => {
     const quote = payload.new as Quote
     if (quote.symbol === 'QQQ') {
+      // Update latest quote
+      setLatestQuote(quote)
+      
       setChartData(prev => {
         const newData = [...prev]
         const time = new Date(quote.timestamp)
@@ -169,16 +216,33 @@ export function useRealtimeData() {
         if (existingIndex >= 0) {
           newData[existingIndex].last_price = quote.last_price
           newData[existingIndex].volume = quote.volume
+          newData[existingIndex].bid = quote.bid_price
+          newData[existingIndex].ask = quote.ask_price
         } else {
+          // Calculate relative time from now
+          const now = new Date()
+          const diffMs = now.getTime() - time.getTime()
+          const diffMinutes = Math.floor(diffMs / 60000)
+          const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+          
+          let timeLabel: string
+          if (diffMinutes > 0) {
+            timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
+          } else {
+            timeLabel = `${diffSeconds}s ago`
+          }
+          
           newData.push({
             timestamp: quote.timestamp,
-            time: format(time, 'HH:mm:ss'),
+            time: timeLabel,
             last_price: quote.last_price,
             sma9: null,
             session_vwap: null,
             volume: quote.volume,
             calls: [],
-            puts: []
+            puts: [],
+            bid: quote.bid_price,
+            ask: quote.ask_price
           })
         }
         
@@ -232,6 +296,7 @@ export function useRealtimeData() {
   return {
     chartData,
     currentTime,
-    loading
+    loading,
+    latestQuote
   }
 }

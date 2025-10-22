@@ -7,6 +7,8 @@ export interface Quote {
   volume: number
   timestamp: string
   created_at: string
+  bid: number
+  ask: number
 }
 
 export interface Indicator {
@@ -57,4 +59,6 @@ export interface ChartData {
   volume: number
   calls: Option[]
   puts: Option[]
+  bid: number
+  ask: number
 }

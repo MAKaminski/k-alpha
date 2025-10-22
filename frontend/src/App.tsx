@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Header } from './components/Header'
 import { Controls } from './components/Controls'
 import { PriceChart } from './components/PriceChart'
@@ -6,7 +6,7 @@ import { VolumeChart } from './components/VolumeChart'
 import { useRealtimeData } from './hooks/useRealtimeData'
 
 function App() {
-  const { chartData, currentTime, loading } = useRealtimeData()
+  const { chartData, currentTime, loading, latestQuote } = useRealtimeData()
   
   const [showPrice, setShowPrice] = useState(true)
   const [showSMA9, setShowSMA9] = useState(true)
@@ -16,7 +16,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header currentTime={currentTime} loading={loading} />
+        <Header currentTime={currentTime} loading={loading} latestQuote={latestQuote} />
         
         <Controls
           showPrice={showPrice}
