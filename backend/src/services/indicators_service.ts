@@ -22,9 +22,14 @@ interface QuoteData {
   timestamp: string;
 }
 
+interface MinutePrice {
+  minute: Date;
+  price: number;
+}
+
 export class IndicatorsService {
   private client: SupabaseClient;
-  private sma9_cache: Map<string, number[]> = new Map();
+  private sma9_cache: Map<string, MinutePrice[]> = new Map();
   private session_data_cache: Map<string, { volume: number; pv_sum: number }> = new Map();
 
   constructor(url: string, key: string) {
@@ -39,8 +44,8 @@ export class IndicatorsService {
     const is_market_hours = isWithinMarketHours(new Date(quote.timestamp));
     const cache_key = `${quote.symbol}_${session_date}`;
 
-    // Calculate SMA9
-    const sma9 = await this.calculateSMA9(quote.symbol, quote.last_price);
+    // Calculate SMA9 (minute-based)
+    const sma9 = await this.calculateSMA9(quote.symbol, quote.last_price, quote.timestamp);
 
     // Calculate Session VWAP (only during market hours)
     let session_vwap: number | undefined;
@@ -76,34 +81,47 @@ export class IndicatorsService {
   }
 
   /**
-   * Calculate 9-period Simple Moving Average
+   * Calculate 9-period Simple Moving Average (minute-based)
    */
-  private async calculateSMA9(symbol: string, current_price: number): Promise<number | undefined> {
+  private async calculateSMA9(symbol: string, current_price: number, current_timestamp: string): Promise<number | undefined> {
     const cache_key = symbol;
+    const current_time = new Date(current_timestamp);
+    const current_minute = new Date(current_time.getFullYear(), current_time.getMonth(), current_time.getDate(), current_time.getHours(), current_time.getMinutes());
     
-    // Get existing prices from cache or database
-    let prices = this.sma9_cache.get(cache_key) || [];
+    // Get existing minute prices from cache or database
+    let minute_prices = this.sma9_cache.get(cache_key) || [];
     
     // If we don't have enough data, fetch from database
-    if (prices.length < 9) {
-      const recent_prices = await this.getRecentPrices(symbol, 9);
-      prices = recent_prices.map(p => p.last_price);
+    if (minute_prices.length < 9) {
+      const recent_minute_prices = await this.getRecentMinutePrices(symbol, 9);
+      minute_prices = recent_minute_prices;
     }
     
-    // Add current price
-    prices.push(current_price);
+    // Check if we need to add a new minute price
+    const last_minute = minute_prices.length > 0 ? minute_prices[minute_prices.length - 1].minute : null;
     
-    // Keep only last 9 prices
-    if (prices.length > 9) {
-      prices = prices.slice(-9);
+    if (!last_minute || current_minute.getTime() !== last_minute.getTime()) {
+      // New minute - add current price
+      minute_prices.push({
+        minute: current_minute,
+        price: current_price
+      });
+      
+      // Keep only last 9 minutes
+      if (minute_prices.length > 9) {
+        minute_prices = minute_prices.slice(-9);
+      }
+      
+      // Update cache
+      this.sma9_cache.set(cache_key, minute_prices);
+    } else {
+      // Same minute - update the price (use latest price for the minute)
+      minute_prices[minute_prices.length - 1].price = current_price;
     }
-    
-    // Update cache
-    this.sma9_cache.set(cache_key, prices);
     
     // Calculate SMA9 if we have enough data
-    if (prices.length >= 9) {
-      const sum = prices.reduce((a, b) => a + b, 0);
+    if (minute_prices.length >= 9) {
+      const sum = minute_prices.reduce((a, b) => a + b.price, 0);
       return sum / 9;
     }
     
@@ -155,7 +173,49 @@ export class IndicatorsService {
   }
 
   /**
-   * Get recent prices for SMA calculation
+   * Get recent minute prices for SMA calculation
+   */
+  private async getRecentMinutePrices(symbol: string, limit: number): Promise<MinutePrice[]> {
+    // Get recent quotes and aggregate by minute
+    const { data, error } = await this.client
+      .from('quotes')
+      .select('last_price, timestamp')
+      .eq('symbol', symbol)
+      .order('timestamp', { ascending: false })
+      .limit(limit * 60); // Get more data to ensure we have enough minutes
+
+    if (error) {
+      throw new Error(`Error fetching recent prices: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Group by minute and take the last price of each minute
+    const minute_map = new Map<string, { minute: Date; price: number }>();
+    
+    for (const quote of data.reverse()) { // Reverse to get chronological order
+      const timestamp = new Date(quote.timestamp);
+      const minute = new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.getDate(), timestamp.getHours(), timestamp.getMinutes());
+      const minute_key = minute.toISOString();
+      
+      // Keep the last price for each minute
+      minute_map.set(minute_key, {
+        minute: minute,
+        price: quote.last_price
+      });
+    }
+
+    // Convert to array and sort by minute
+    const minute_prices = Array.from(minute_map.values()).sort((a, b) => a.minute.getTime() - b.minute.getTime());
+    
+    // Return only the last 'limit' minutes
+    return minute_prices.slice(-limit);
+  }
+
+  /**
+   * Get recent prices for SMA calculation (legacy method - keeping for compatibility)
    */
   private async getRecentPrices(symbol: string, limit: number): Promise<{ last_price: number; timestamp: string }[]> {
     const { data, error } = await this.client
