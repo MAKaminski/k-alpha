@@ -81,6 +81,20 @@ export function useRealtimeData() {
       console.log('Market open time:', marketOpen.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       console.log('Market close time:', marketClose.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       
+      // First check if there's any data at all
+      const allDataResult = await supabase
+        .from('indicators')
+        .select('*')
+        .eq('symbol', 'QQQ')
+        .order('timestamp', { ascending: false })
+        .limit(10)
+
+      console.log('All indicators data (last 10):', {
+        error: allDataResult.error,
+        count: allDataResult.data?.length || 0,
+        sample: allDataResult.data?.[0]
+      })
+
       const [indicatorsResult] = await Promise.all([
         supabase
           .from('indicators')
@@ -91,6 +105,12 @@ export function useRealtimeData() {
           .lte('timestamp', marketClose.toISOString())
           .order('timestamp', { ascending: true })
       ])
+
+      console.log('Supabase query result:', {
+        error: indicatorsResult.error,
+        data: indicatorsResult.data,
+        count: indicatorsResult.data?.length || 0
+      })
 
       if (indicatorsResult.error) throw indicatorsResult.error
 
@@ -107,7 +127,15 @@ export function useRealtimeData() {
         firstIndicator: indicators[0]?.timestamp,
         lastIndicator: indicators[indicators.length - 1]?.timestamp,
         firstQuoteTime: quotes[0] ? new Date(quotes[0].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A',
-        lastQuoteTime: quotes[quotes.length - 1] ? new Date(quotes[quotes.length - 1].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A'
+        lastQuoteTime: quotes[quotes.length - 1] ? new Date(quotes[quotes.length - 1].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A',
+        sampleIndicator: indicators[0] ? {
+          symbol: indicators[0].symbol,
+          last_price: indicators[0].last_price,
+          sma9: indicators[0].sma9,
+          session_vwap: indicators[0].session_vwap,
+          is_market_hours: indicators[0].is_market_hours,
+          timestamp: indicators[0].timestamp
+        } : 'No indicators'
       })
 
       // Combine and process data
