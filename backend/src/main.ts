@@ -6,6 +6,7 @@ import { SupabaseService } from './services/supabase_client.js';
 import { OptionsSupabaseService } from './services/options_supabase.js';
 import { IndicatorsService } from './services/indicators_service.js';
 import { SchwabAuth } from './utils/schwab_auth.js';
+import { isWithinMarketHours } from './utils/market_hours.js';
 import { log } from './utils/logger.js';
 
 const schwab_auth = new SchwabAuth(
@@ -99,8 +100,7 @@ async function fetch_and_store_options(current_price: number): Promise<void> {
       log(`Stored ${options.length} 0DTE options for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price} (${calls} calls, ${puts} puts, strikes: $${min_strike}-$${max_strike})`);
     } else {
       // This is normal when markets are closed or no 0DTE options are available
-      const now = new Date();
-      const is_market_hours = now.getHours() >= 9 && now.getHours() < 16 && now.getDay() >= 1 && now.getDay() <= 5;
+      const is_market_hours = isWithinMarketHours();
       const reason = is_market_hours ? 'no 0DTE options available' : 'markets closed';
       log(`No 0DTE options found for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price} (${reason})`);
     }

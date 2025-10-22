@@ -13,6 +13,14 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "src/**/__tests__/**", "src/**/*.test.ts", "src/**/*.spec.ts"]
+  "exclude": [
+    "node_modules", 
+    "src/**/__tests__/**", 
+    "src/**/*.test.ts", 
+    "src/**/*.spec.ts",
+    "src/**/debug_*.ts",
+    "src/**/test_*.ts",
+    "src/**/check_*.ts"
+  ]
 }
 
