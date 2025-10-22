@@ -122,28 +122,83 @@ export class OptionsClient {
       const token = await this.get_current_token();
       const today_str = this.get_today_date_string();
       
-      // Calculate the strike range for ±5 strikes
-      const strikes = this.calculate_strikes(current_price);
-      const min_strike = Math.min(...strikes);
-      const max_strike = Math.max(...strikes);
+      // Find available strikes by testing common strike levels
+      const test_strikes = [500, 550, 600, 650, 700, 750, 800];
+      const available_strikes = [];
       
-      // Use chains API to get all available options for today with the full strike range
-      const response = await fetch(
-        `${CONSTANTS.SCHWAB_API_BASE_URL}/chains?symbol=${underlying}&contractType=ALL&includeQuotes=TRUE&strategy=SINGLE&interval=1&strike=${current_price}&range=ALL`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
+      // First, find what strikes are actually available
+      for (const strike of test_strikes) {
+        try {
+          const response = await fetch(
+            `${CONSTANTS.SCHWAB_API_BASE_URL}/chains?symbol=${underlying}&contractType=ALL&includeQuotes=TRUE&strategy=SINGLE&interval=1&strike=${strike}&range=ALL`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+              }
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const today_key = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}:0`;
+            
+            if (data.callExpDateMap && data.callExpDateMap[today_key]) {
+              const strikes = Object.keys(data.callExpDateMap[today_key]);
+              if (strikes.length > 0) {
+                available_strikes.push(...strikes.map(s => parseFloat(s)));
+              }
+            }
           }
+        } catch (error) {
+          // Ignore errors during discovery
         }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Schwab API error: ${response.status} ${response.statusText}`);
       }
+      
+      // Remove duplicates and sort
+      const unique_available_strikes = [...new Set(available_strikes)].sort((a, b) => a - b);
+      
+      // Find strikes closest to current price (±5 range)
+      const closest_strikes = unique_available_strikes
+        .map(strike => ({ strike, diff: Math.abs(strike - current_price) }))
+        .sort((a, b) => a.diff - b.diff)
+        .slice(0, 11) // Get up to 11 strikes
+        .map(item => item.strike);
+      
+      console.log(`Available strikes: ${unique_available_strikes.join(', ')}`);
+      console.log(`Using closest strikes: ${closest_strikes.join(', ')}`);
+      
+      // Query the closest strikes
+      const all_options: OptionData[] = [];
+      
+      for (const strike of closest_strikes) {
+        try {
+          const response = await fetch(
+            `${CONSTANTS.SCHWAB_API_BASE_URL}/chains?symbol=${underlying}&contractType=ALL&includeQuotes=TRUE&strategy=SINGLE&interval=1&strike=${strike}&range=ALL`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+              }
+            }
+          );
 
-      const data = await response.json();
-      return this.parse_chains_response(data, underlying, today_str, min_strike, max_strike);
+          if (response.ok) {
+            const data = await response.json();
+            const options = this.parse_chains_response(data, underlying, today_str);
+            all_options.push(...options);
+          }
+        } catch (error) {
+          console.warn(`Error fetching options for strike ${strike}:`, error);
+        }
+      }
+      
+      // Remove duplicates based on symbol
+      const unique_options = all_options.filter((option, index, self) => 
+        index === self.findIndex(o => o.symbol === option.symbol)
+      );
+      
+      return unique_options;
     } catch (error) {
       console.error('Error fetching 0DTE options:', error);
       throw error;
@@ -249,9 +304,10 @@ export class OptionsClient {
         }
         
         for (const [symbol, option_data] of Object.entries(strike_data as any)) {
-          const option = (option_data as any).option;
-          if (option) {
-            options.push(this.create_option_data(symbol, underlying, 'CALL', option, expiration_date));
+          // The option data is directly in the strike_data, not nested under 'option'
+          const option = option_data as any;
+          if (option && option.symbol) {
+            options.push(this.create_option_data(option.symbol, underlying, 'CALL', option, expiration_date));
           }
         }
       }
@@ -271,9 +327,10 @@ export class OptionsClient {
         }
         
         for (const [symbol, option_data] of Object.entries(strike_data as any)) {
-          const option = (option_data as any).option;
-          if (option) {
-            options.push(this.create_option_data(symbol, underlying, 'PUT', option, expiration_date));
+          // The option data is directly in the strike_data, not nested under 'option'
+          const option = option_data as any;
+          if (option && option.symbol) {
+            options.push(this.create_option_data(option.symbol, underlying, 'PUT', option, expiration_date));
           }
         }
       }
