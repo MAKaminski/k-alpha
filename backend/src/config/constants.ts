@@ -1,7 +1,9 @@
 export const CONSTANTS = {
   QUOTE_SYMBOL: 'QQQ',
-  FETCH_INTERVAL_MS: 1000,
+  FETCH_INTERVAL_MS: 2000, // 2 seconds = 30 calls/min (well below 120/min limit)
   LOG_MAX_SIZE_KB: 100,
-  SCHWAB_API_BASE_URL: 'https://api.schwabapi.com/marketdata/v1'
+  SCHWAB_API_BASE_URL: 'https://api.schwabapi.com/marketdata/v1',
+  RATE_LIMIT_CALLS_PER_MINUTE: 120,
+  SAFE_CALLS_PER_MINUTE: 30 // Use only 25% of rate limit for safety
 } as const;
 

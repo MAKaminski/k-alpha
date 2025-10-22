@@ -8,6 +8,7 @@ import { IndicatorsService } from './services/indicators_service.js';
 import { SchwabAuth } from './utils/schwab_auth.js';
 import { isWithinMarketHours } from './utils/market_hours.js';
 import { log } from './utils/logger.js';
+import { withRateLimit, getRateLimitStatus } from './utils/rate_limiter.js';
 
 const schwab_auth = new SchwabAuth(
   process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '',
@@ -42,7 +43,8 @@ const indicators_service = new IndicatorsService(
 
 async function fetch_and_store_quote(): Promise<void> {
   try {
-    const quote = await schwab_client.fetch_quote(CONSTANTS.QUOTE_SYMBOL);
+    // Use rate limiting for the API call
+    const quote = await withRateLimit(() => schwab_client.fetch_quote(CONSTANTS.QUOTE_SYMBOL));
     
     await supabase.insert_quote({
       symbol: quote.symbol,
@@ -58,8 +60,10 @@ async function fetch_and_store_quote(): Promise<void> {
     // Calculate and store technical indicators
     await calculate_and_store_indicators(quote);
     
-    // Fetch and store 0DTE options data
-    await fetch_and_store_options(quote.last_price);
+    // Fetch and store 0DTE options data (only during market hours)
+    if (isWithinMarketHours()) {
+      await fetch_and_store_options(quote.last_price);
+    }
     
   } catch (error) {
     log(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -83,7 +87,8 @@ async function calculate_and_store_indicators(quote: any): Promise<void> {
 
 async function fetch_and_store_options(current_price: number): Promise<void> {
   try {
-    const options = await options_client.fetch_0dte_options(CONSTANTS.QUOTE_SYMBOL, current_price);
+    // Use rate limiting for the options API call
+    const options = await withRateLimit(() => options_client.fetch_0dte_options(CONSTANTS.QUOTE_SYMBOL, current_price));
     
     if (options.length > 0) {
       await options_supabase.insert_options(options);
@@ -111,11 +116,21 @@ async function fetch_and_store_options(current_price: number): Promise<void> {
 
 async function start_service(): Promise<void> {
   log(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL}`);
+  log(`Rate limit: 120 calls/min, using 2-second intervals (30 calls/min max)`);
   
+  // Start the main data fetching loop
   setInterval(
     fetch_and_store_quote,
     CONSTANTS.FETCH_INTERVAL_MS
   );
+  
+  // Start rate limit monitoring
+  setInterval(() => {
+    const status = getRateLimitStatus();
+    if (status.currentCalls > 60) { // Warn at 50% of safe limit
+      log(`Rate limit warning: ${status.currentCalls}/90 calls used in last minute`);
+    }
+  }, 10000); // Check every 10 seconds
   
   await fetch_and_store_quote();
 }
