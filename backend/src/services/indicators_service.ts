@@ -28,12 +28,12 @@ interface MinutePrice {
 }
 
 export class IndicatorsService {
-  private client: SupabaseClient;
+  public supabase: SupabaseClient;
   private sma9_cache: Map<string, MinutePrice[]> = new Map();
   private session_data_cache: Map<string, { volume: number; pv_sum: number }> = new Map();
 
   constructor(url: string, key: string) {
-    this.client = createClient(url, key);
+    this.supabase = createClient(url, key);
   }
 
   /**
@@ -177,7 +177,7 @@ export class IndicatorsService {
    */
   private async getRecentMinutePrices(symbol: string, limit: number): Promise<MinutePrice[]> {
     // Get recent quotes and aggregate by minute
-    const { data, error } = await this.client
+    const { data, error } = await this.supabase
       .from('quotes')
       .select('last_price, timestamp')
       .eq('symbol', symbol)
@@ -218,7 +218,7 @@ export class IndicatorsService {
    * Get recent prices for SMA calculation (legacy method - keeping for compatibility)
    */
   private async getRecentPrices(symbol: string, limit: number): Promise<{ last_price: number; timestamp: string }[]> {
-    const { data, error } = await this.client
+    const { data, error } = await this.supabase
       .from('quotes')
       .select('last_price, timestamp')
       .eq('symbol', symbol)
@@ -236,7 +236,7 @@ export class IndicatorsService {
    * Get existing session data for VWAP calculation
    */
   private async getSessionData(symbol: string, session_date: string): Promise<{ volume: number; pv_sum: number }> {
-    const { data, error } = await this.client
+    const { data, error } = await this.supabase
       .from('indicators')
       .select('session_volume, session_pv_sum')
       .eq('symbol', symbol)
@@ -263,7 +263,7 @@ export class IndicatorsService {
    * Get session start time
    */
   private async getSessionStartTime(symbol: string, session_date: string): Promise<string> {
-    const { data, error } = await this.client
+    const { data, error } = await this.supabase
       .from('indicators')
       .select('session_start_time')
       .eq('symbol', symbol)
@@ -302,7 +302,7 @@ export class IndicatorsService {
    * Get latest indicators for a symbol
    */
   async getLatestIndicators(symbol: string, limit: number = 100): Promise<IndicatorData[]> {
-    const { data, error } = await this.client
+    const { data, error } = await this.supabase
       .from('indicators')
       .select('*')
       .eq('symbol', symbol)

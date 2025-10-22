@@ -5,6 +5,7 @@ import { OptionsClient } from './services/options_client.js';
 import { SupabaseService } from './services/supabase_client.js';
 import { OptionsSupabaseService } from './services/options_supabase.js';
 import { IndicatorsService } from './services/indicators_service.js';
+import { CrossoverDetector } from './services/crossover_detector.js';
 import { SchwabAuth } from './utils/schwab_auth.js';
 import { isWithinMarketHours } from './utils/market_hours.js';
 import { log } from './utils/logger.js';
@@ -37,6 +38,11 @@ const options_supabase = new OptionsSupabaseService(
 );
 
 const indicators_service = new IndicatorsService(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+);
+
+const crossover_detector = new CrossoverDetector(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_KEY!
 );
@@ -85,6 +91,10 @@ async function calculate_and_store_indicators(quote: any): Promise<void> {
     });
     
     log(`Calculated indicators for ${quote.symbol}: $${quote.last_price}`);
+    
+    // Check for crossover signals after storing indicators
+    await check_for_crossover_signals(quote);
+    
   } catch (error) {
     log(`Indicators error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -121,6 +131,48 @@ async function fetch_and_store_options(current_price: number): Promise<void> {
     }
   } catch (error) {
     log(`Options error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function check_for_crossover_signals(quote: any): Promise<void> {
+  try {
+    // Get the latest indicator data for crossover detection
+    const { data: latestIndicator, error } = await indicators_service.supabase
+      .from('indicators')
+      .select('*')
+      .eq('symbol', quote.symbol)
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !latestIndicator) {
+      return; // No indicator data available yet
+    }
+
+    // Process the indicator data for crossover detection
+    const signal = await crossover_detector.processIndicatorData({
+      symbol: latestIndicator.symbol,
+      timestamp: latestIndicator.timestamp,
+      last_price: latestIndicator.last_price,
+      sma9: latestIndicator.sma9,
+      session_vwap: latestIndicator.session_vwap,
+      is_market_hours: latestIndicator.is_market_hours,
+      session_date: latestIndicator.session_date
+    });
+
+    if (signal) {
+      log(`🎯 ${signal.signal_type} signal detected: SMA9 ${signal.crossover_direction} VWAP at $${signal.price_at_crossover}`);
+      
+      // Log trading recommendation
+      if (signal.signal_type === 'BULLISH') {
+        log(`📈 BULLISH SIGNAL: Consider buying calls - SMA9 crossed above VWAP`);
+      } else {
+        log(`📉 BEARISH SIGNAL: Consider selling puts - SMA9 crossed below VWAP`);
+      }
+    }
+    
+  } catch (error) {
+    log(`Crossover detection error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
