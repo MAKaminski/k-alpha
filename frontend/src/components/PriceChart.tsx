@@ -18,11 +18,13 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     d.session_vwap
   ]).filter((price): price is number => price !== null && price !== undefined && !isNaN(price))
   
-  // Use a fixed range around current QQQ levels to avoid "funny" scaling
-  // QQQ typically trades in the $600-650 range, so use a reasonable range
-  const currentPrice = allPrices.length > 0 ? allPrices[allPrices.length - 1] : 606
-  const minPriceRounded = Math.floor(currentPrice / 10) * 10 - 20  // Round down to nearest 10, subtract 20
-  const maxPriceRounded = Math.ceil(currentPrice / 10) * 10 + 20   // Round up to nearest 10, add 20
+  // If no valid prices, use a default range
+  const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : 600
+  const maxPrice = allPrices.length > 0 ? Math.max(...allPrices) : 610
+  
+  // Add +/- $1 buffer rounded to nearest dollar
+  const minPriceRounded = Math.floor(minPrice) - 1
+  const maxPriceRounded = Math.ceil(maxPrice) + 1
 
   // Get current date for trading hours calculation
   const now = new Date()
@@ -215,7 +217,6 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             tick={{ fontSize: 12 }}
             tickFormatter={(value) => `$${Math.round(value)}`}
             label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }}
-            allowDataOverflow={false}
           />
           <YAxis 
             yAxisId="options"
