@@ -15,10 +15,10 @@ export interface Indicator {
   id: number
   symbol: string
   timestamp: string
-  last_price: number
+  last_price: number | string // Database returns string, we convert to number
   volume: number
-  sma9: number | null
-  session_vwap: number | null
+  sma9: number | string | null // Database returns string, we convert to number
+  session_vwap: number | string | null // Database returns string, we convert to number
   session_date: string
   is_market_hours: boolean
   session_start_time: string | null

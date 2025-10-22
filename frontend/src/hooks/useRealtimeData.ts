@@ -198,15 +198,15 @@ export function useRealtimeData() {
       
       const timeLabel = estTime
       
-      // Use the actual price data from the database
-      const price = indicator.last_price
+      // Use the actual price data from the database (convert string to number)
+      const price = parseFloat(indicator.last_price.toString())
       
       result.push({
         timestamp: indicator.timestamp,
         time: timeLabel,
         last_price: price,
-        sma9: indicator.sma9, // Can be null
-        session_vwap: indicator.session_vwap, // Can be null
+        sma9: indicator.sma9 ? parseFloat(indicator.sma9.toString()) : null, // Convert string to number
+        session_vwap: indicator.session_vwap ? parseFloat(indicator.session_vwap.toString()) : null, // Convert string to number
         volume: indicator.volume,
         calls: [],
         puts: [],
