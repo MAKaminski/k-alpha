@@ -82,7 +82,8 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     console.log('Sample session_vwap values:', data.slice(0, 5).map(d => d.session_vwap))
   }
 
-  // Filter out data points with null/undefined values for charting
+  // Filter out data points with invalid price or time values
+  // Allow null sma9 and session_vwap values as they may not be available initially
   const validData = data.filter(d => 
     d.last_price != null && 
     d.last_price > 0 && 
@@ -135,7 +136,6 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
-            domain={['9:00:00', '16:00:00']}
             type="category"
             scale="point"
           />
@@ -213,6 +213,7 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
               strokeWidth={2}
               dot={false}
               name="SMA9"
+              connectNulls={false}
             />
           )}
           
@@ -225,6 +226,7 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
               strokeWidth={2}
               dot={false}
               name="Session VWAP"
+              connectNulls={false}
             />
           )}
           

@@ -68,7 +68,7 @@ export function useRealtimeData() {
     try {
       setLoading(true)
       
-      // Fetch data for the entire trading day (9AM-4PM EST)
+      // Fetch data for today's trading session only (market hours)
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       
@@ -76,11 +76,8 @@ export function useRealtimeData() {
       const marketOpen = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9AM EST
       const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4PM EST
       
-      // Fetch data from the last 7 days to ensure we have some data
-      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      
       console.log('Current time:', now.toISOString())
-      console.log('Fetching data from:', last7Days.toISOString(), 'to:', now.toISOString())
+      console.log('Fetching market hours data for today:', today.toISOString().split('T')[0])
       console.log('Market open time:', marketOpen.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       console.log('Market close time:', marketClose.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       
@@ -89,8 +86,9 @@ export function useRealtimeData() {
           .from('indicators')
           .select('*')
           .eq('symbol', 'QQQ')
-          .gte('timestamp', last7Days.toISOString())
-          .lte('timestamp', now.toISOString())
+          .eq('is_market_hours', true)
+          .gte('timestamp', marketOpen.toISOString())
+          .lte('timestamp', marketClose.toISOString())
           .order('timestamp', { ascending: true })
       ])
 
@@ -158,8 +156,8 @@ export function useRealtimeData() {
         timestamp: indicator.timestamp,
         time: timeLabel,
         last_price: price,
-        sma9: indicator.sma9,
-        session_vwap: indicator.session_vwap,
+        sma9: indicator.sma9, // Can be null
+        session_vwap: indicator.session_vwap, // Can be null
         volume: indicator.volume,
         calls: [],
         puts: [],
@@ -174,7 +172,15 @@ export function useRealtimeData() {
     // Debug: Check for any issues with the data
     const hasValidPrices = result.every(d => d.last_price && d.last_price > 0)
     const hasValidTimes = result.every(d => d.time && d.time.length > 0)
-    console.log('Data validation:', { hasValidPrices, hasValidTimes })
+    const sma9Count = result.filter(d => d.sma9 !== null).length
+    const vwapCount = result.filter(d => d.session_vwap !== null).length
+    console.log('Data validation:', { 
+      hasValidPrices, 
+      hasValidTimes, 
+      totalPoints: result.length,
+      sma9Available: sma9Count,
+      vwapAvailable: vwapCount
+    })
     
     if (!hasValidPrices) {
       console.log('❌ Invalid prices detected!')
