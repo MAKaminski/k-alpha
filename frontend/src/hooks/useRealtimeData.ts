@@ -76,11 +76,11 @@ export function useRealtimeData() {
       const marketOpen = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9AM EST
       const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4PM EST
       
-      // Also fetch data from the last 24 hours to ensure we have some data
-      const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      // Fetch data from the last 7 days to ensure we have some data
+      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       
       console.log('Current time:', now.toISOString())
-      console.log('Fetching data from:', last24Hours.toISOString(), 'to:', now.toISOString())
+      console.log('Fetching data from:', last7Days.toISOString(), 'to:', now.toISOString())
       console.log('Market open time:', marketOpen.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       console.log('Market close time:', marketClose.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       
@@ -89,7 +89,7 @@ export function useRealtimeData() {
           .from('indicators')
           .select('*')
           .eq('ticker', 'QQQ')
-          .gte('timestamp', last24Hours.toISOString())
+          .gte('timestamp', last7Days.toISOString())
           .lte('timestamp', now.toISOString())
           .order('timestamp', { ascending: true })
       ])
