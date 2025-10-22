@@ -1,9 +1,9 @@
 export interface Quote {
   id: number
   symbol: string
-  bid_price: number
-  ask_price: number
-  last_price: number
+  bid_price: number | string // Database returns string, we convert to number
+  ask_price: number | string // Database returns string, we convert to number
+  last_price: number | string // Database returns string, we convert to number
   volume: number
   timestamp: string
   created_at: string
