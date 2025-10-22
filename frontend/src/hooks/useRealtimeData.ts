@@ -95,15 +95,14 @@ export function useRealtimeData() {
         sample: allDataResult.data?.[0]
       })
 
+      // Try to get any data first, then filter
       const [indicatorsResult] = await Promise.all([
         supabase
           .from('indicators')
           .select('*')
           .eq('symbol', 'QQQ')
-          .eq('is_market_hours', true)
-          .gte('timestamp', marketOpen.toISOString())
-          .lte('timestamp', marketClose.toISOString())
           .order('timestamp', { ascending: true })
+          .limit(100) // Get last 100 records regardless of time
       ])
 
       console.log('Supabase query result:', {
@@ -141,7 +140,27 @@ export function useRealtimeData() {
       // Combine and process data
       const combinedData = combineData(quotes, indicators, options)
       console.log('Combined data points:', combinedData.length)
-      setChartData(combinedData)
+      
+      // If no data from today, try to get any recent data
+      if (combinedData.length === 0) {
+        console.log('No data from today, trying to get any recent data...')
+        const fallbackResult = await supabase
+          .from('indicators')
+          .select('*')
+          .eq('symbol', 'QQQ')
+          .order('timestamp', { ascending: false })
+          .limit(50)
+        
+        if (fallbackResult.data && fallbackResult.data.length > 0) {
+          console.log('Found fallback data:', fallbackResult.data.length, 'records')
+          const fallbackData = combineData([], fallbackResult.data as Indicator[], [])
+          setChartData(fallbackData)
+        } else {
+          setChartData([])
+        }
+      } else {
+        setChartData(combinedData)
+      }
       
       // Set latest quote for display
       if (quotes.length > 0) {
