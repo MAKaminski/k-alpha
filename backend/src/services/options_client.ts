@@ -122,7 +122,12 @@ export class OptionsClient {
       const token = await this.get_current_token();
       const today_str = this.get_today_date_string();
       
-      // Use chains API to get all available options for today
+      // Calculate the strike range for ±5 strikes
+      const strikes = this.calculate_strikes(current_price);
+      const min_strike = Math.min(...strikes);
+      const max_strike = Math.max(...strikes);
+      
+      // Use chains API to get all available options for today with the full strike range
       const response = await fetch(
         `${CONSTANTS.SCHWAB_API_BASE_URL}/chains?symbol=${underlying}&contractType=ALL&includeQuotes=TRUE&strategy=SINGLE&interval=1&strike=${current_price}&range=ALL`,
         {
@@ -138,7 +143,7 @@ export class OptionsClient {
       }
 
       const data = await response.json();
-      return this.parse_chains_response(data, underlying, today_str);
+      return this.parse_chains_response(data, underlying, today_str, min_strike, max_strike);
     } catch (error) {
       console.error('Error fetching 0DTE options:', error);
       throw error;
@@ -226,7 +231,7 @@ export class OptionsClient {
   /**
    * Parse Schwab chains API response
    */
-  private parse_chains_response(data: any, underlying: string, expiration_date: string): OptionData[] {
+  private parse_chains_response(data: any, underlying: string, expiration_date: string, min_strike?: number, max_strike?: number): OptionData[] {
     const options: OptionData[] = [];
     const today_key = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}:0`;
     
@@ -234,6 +239,15 @@ export class OptionsClient {
     if (data.callExpDateMap && data.callExpDateMap[today_key]) {
       const calls = data.callExpDateMap[today_key];
       for (const [strike_str, strike_data] of Object.entries(calls)) {
+        const strike_price = parseFloat(strike_str);
+        
+        // Filter by strike range if provided
+        if (min_strike !== undefined && max_strike !== undefined) {
+          if (strike_price < min_strike || strike_price > max_strike) {
+            continue;
+          }
+        }
+        
         for (const [symbol, option_data] of Object.entries(strike_data as any)) {
           const option = (option_data as any).option;
           if (option) {
@@ -247,6 +261,15 @@ export class OptionsClient {
     if (data.putExpDateMap && data.putExpDateMap[today_key]) {
       const puts = data.putExpDateMap[today_key];
       for (const [strike_str, strike_data] of Object.entries(puts)) {
+        const strike_price = parseFloat(strike_str);
+        
+        // Filter by strike range if provided
+        if (min_strike !== undefined && max_strike !== undefined) {
+          if (strike_price < min_strike || strike_price > max_strike) {
+            continue;
+          }
+        }
+        
         for (const [symbol, option_data] of Object.entries(strike_data as any)) {
           const option = (option_data as any).option;
           if (option) {

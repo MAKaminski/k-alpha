@@ -86,7 +86,17 @@ async function fetch_and_store_options(current_price: number): Promise<void> {
     
     if (options.length > 0) {
       await options_supabase.insert_options(options);
-      log(`Stored ${options.length} 0DTE options for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price}`);
+      
+      // Count calls and puts
+      const calls = options.filter(opt => opt.option_type === 'CALL').length;
+      const puts = options.filter(opt => opt.option_type === 'PUT').length;
+      
+      // Get strike range
+      const strikes = options.map(opt => opt.strike_price).sort((a, b) => a - b);
+      const min_strike = strikes[0];
+      const max_strike = strikes[strikes.length - 1];
+      
+      log(`Stored ${options.length} 0DTE options for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price} (${calls} calls, ${puts} puts, strikes: $${min_strike}-$${max_strike})`);
     } else {
       // This is normal when markets are closed or no 0DTE options are available
       const now = new Date();
