@@ -29,12 +29,12 @@ export function Header({ currentTime, loading, latestQuote }: HeaderProps) {
           </div>
           {latestQuote && (
             <div className="mt-2 text-sm">
-              <div className="font-semibold">QQQ: ${latestQuote.last_price.toFixed(2)}</div>
+              <div className="font-semibold">QQQ: ${latestQuote.last_price?.toFixed(2) || 'N/A'}</div>
               <div className="text-blue-200">
-                Bid: ${latestQuote.bid.toFixed(2)} | Ask: ${latestQuote.ask.toFixed(2)}
+                Bid: ${latestQuote.bid?.toFixed(2) || 'N/A'} | Ask: ${latestQuote.ask?.toFixed(2) || 'N/A'}
               </div>
               <div className="text-blue-200">
-                Volume: {latestQuote.volume.toLocaleString()}
+                Volume: {latestQuote.volume?.toLocaleString() || 'N/A'}
               </div>
             </div>
           )}

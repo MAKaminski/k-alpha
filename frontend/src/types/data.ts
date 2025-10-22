@@ -7,8 +7,8 @@ export interface Quote {
   volume: number
   timestamp: string
   created_at: string
-  bid: number
-  ask: number
+  bid?: number
+  ask?: number
 }
 
 export interface Indicator {

@@ -8,9 +8,17 @@ export function useRealtimeData() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [latestQuote, setLatestQuote] = useState<Quote | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Update current time every second
   useEffect(() => {
+    if (!mounted) return
+    
     const timer = setInterval(() => {
       setCurrentTime(new Date())
       
@@ -39,7 +47,7 @@ export function useRealtimeData() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [mounted])
 
   // Fetch initial data
   useEffect(() => {
@@ -320,6 +328,7 @@ export function useRealtimeData() {
     chartData,
     currentTime,
     loading,
-    latestQuote
+    latestQuote,
+    mounted
   }
 }
