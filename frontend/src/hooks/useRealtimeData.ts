@@ -15,35 +15,12 @@ export function useRealtimeData() {
     setMounted(true)
   }, [])
 
-  // Update current time every second
+  // Update current time every second (but don't update chart time labels)
   useEffect(() => {
     if (!mounted) return
     
     const timer = setInterval(() => {
       setCurrentTime(new Date())
-      
-      // Update time labels for chart data
-      setChartData(prev => {
-        const now = new Date()
-        return prev.map(item => {
-          const time = new Date(item.timestamp)
-          const diffMs = now.getTime() - time.getTime()
-          const diffMinutes = Math.floor(diffMs / 60000)
-          const diffSeconds = Math.floor((diffMs % 60000) / 1000)
-          
-          let timeLabel: string
-          if (diffMinutes > 0) {
-            timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
-          } else {
-            timeLabel = `${diffSeconds}s ago`
-          }
-          
-          return {
-            ...item,
-            time: timeLabel
-          }
-        })
-      })
     }, 1000)
 
     return () => clearInterval(timer)
@@ -160,16 +137,27 @@ export function useRealtimeData() {
       
       const key = time.toISOString()
       
-      // Calculate relative time from now
-      const diffMs = now.getTime() - time.getTime()
-      const diffMinutes = Math.floor(diffMs / 60000)
-      const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+      // Format time as static trading hours (9am-4pm EST)
+      const estTime = new Date(time.getTime() - (time.getTimezoneOffset() * 60000) + (5 * 60 * 60 * 1000)) // Convert to EST
+      const hours = estTime.getHours()
+      const minutes = estTime.getMinutes()
+      const seconds = estTime.getSeconds()
       
       let timeLabel: string
-      if (diffMinutes > 0) {
-        timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
+      if (hours >= 9 && hours < 16) {
+        // During trading hours, show actual time
+        timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
       } else {
-        timeLabel = `${diffSeconds}s ago`
+        // Outside trading hours, show relative time
+        const diffMs = now.getTime() - time.getTime()
+        const diffMinutes = Math.floor(diffMs / 60000)
+        const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+        
+        if (diffMinutes > 0) {
+          timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
+        } else {
+          timeLabel = `${diffSeconds}s ago`
+        }
       }
       
       dataMap.set(key, {
@@ -250,17 +238,28 @@ export function useRealtimeData() {
           newData[existingIndex].bid = quote.bid_price
           newData[existingIndex].ask = quote.ask_price
         } else {
-          // Calculate relative time from now
-          const now = new Date()
-          const diffMs = now.getTime() - time.getTime()
-          const diffMinutes = Math.floor(diffMs / 60000)
-          const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+          // Format time as static trading hours (9am-4pm EST)
+          const estTime = new Date(time.getTime() - (time.getTimezoneOffset() * 60000) + (5 * 60 * 60 * 1000)) // Convert to EST
+          const hours = estTime.getHours()
+          const minutes = estTime.getMinutes()
+          const seconds = estTime.getSeconds()
           
           let timeLabel: string
-          if (diffMinutes > 0) {
-            timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
+          if (hours >= 9 && hours < 16) {
+            // During trading hours, show actual time
+            timeLabel = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
           } else {
-            timeLabel = `${diffSeconds}s ago`
+            // Outside trading hours, show relative time
+            const now = new Date()
+            const diffMs = now.getTime() - time.getTime()
+            const diffMinutes = Math.floor(diffMs / 60000)
+            const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+            
+            if (diffMinutes > 0) {
+              timeLabel = `${diffMinutes}m ${diffSeconds}s ago`
+            } else {
+              timeLabel = `${diffSeconds}s ago`
+            }
           }
           
           newData.push({

@@ -52,28 +52,38 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   const optionRange = maxOptionPrice - minOptionPrice
   const optionPadding = optionRange * 0.1
 
-  // Calculate average option prices for each data point
+  // Process options data for individual series
   const dataWithOptionPrices = data.map(d => {
-    const callPrices = d.calls
-      .map(c => [c.bid_price, c.ask_price, c.last_price, c.mark_price])
-      .flat()
-      .filter((p): p is number => p !== null && p !== undefined && p > 0)
-    
-    const putPrices = d.puts
-      .map(p => [p.bid_price, p.ask_price, p.last_price, p.mark_price])
-      .flat()
-      .filter((p): p is number => p !== null && p !== undefined && p > 0)
-    
-    const avgCallPrice = callPrices.length > 0 ? callPrices.reduce((a, b) => a + b, 0) / callPrices.length : null
-    const avgPutPrice = putPrices.length > 0 ? putPrices.reduce((a, b) => a + b, 0) / putPrices.length : null
-    
-    return {
+    // Group calls by strike price for individual series
+    const callsByStrike = d.calls.reduce((acc, call) => {
+      const strike = call.strike_price
+      if (!acc[strike]) {
+        acc[strike] = []
+      }
+      acc[strike].push(call)
+      return acc
+    }, {} as { [strike: number]: any[] })
+
+    // Group puts by strike price for individual series
+    const putsByStrike = d.puts.reduce((acc, put) => {
+      const strike = put.strike_price
+      if (!acc[strike]) {
+        acc[strike] = []
+      }
+      acc[strike].push(put)
+      return acc
+    }, {} as { [strike: number]: any[] })
+
+    // Create individual option series data
+    const optionSeries = {
       ...d,
-      avgCallPrice,
-      avgPutPrice,
       callCount: d.calls.length,
-      putCount: d.puts.length
+      putCount: d.puts.length,
+      callsByStrike,
+      putsByStrike
     }
+
+    return optionSeries
   })
 
   return (
@@ -111,6 +121,7 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             orientation="left"
             domain={[minPrice - padding, maxPrice + padding]}
             tick={{ fontSize: 12 }}
+            tickFormatter={(value) => `$${Math.round(value)}`}
             label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }}
           />
           <YAxis 
@@ -175,28 +186,63 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             />
           )}
           
-          {showOptions && (
-            <>
-              <Line
-                yAxisId="options"
-                type="monotone"
-                dataKey="avgCallPrice"
-                stroke="#f59e0b"
-                strokeWidth={2}
-                dot={false}
-                name="Avg Call Price"
-              />
-              <Line
-                yAxisId="options"
-                type="monotone"
-                dataKey="avgPutPrice"
-                stroke="#8b5cf6"
-                strokeWidth={2}
-                dot={false}
-                name="Avg Put Price"
-              />
-            </>
-          )}
+          {showOptions && dataWithOptionPrices.length > 0 && (() => {
+            // Get all unique strike prices from the first data point
+            const firstData = dataWithOptionPrices[0]
+            const allStrikes = new Set<number>()
+            
+            dataWithOptionPrices.forEach(d => {
+              Object.keys(d.callsByStrike).forEach(strike => allStrikes.add(parseFloat(strike)))
+              Object.keys(d.putsByStrike).forEach(strike => allStrikes.add(parseFloat(strike)))
+            })
+            
+            const strikes = Array.from(allStrikes).sort((a, b) => a - b)
+            
+            return (
+              <>
+                {strikes.slice(0, 5).map((strike, index) => (
+                  <Line
+                    key={`call-${strike}`}
+                    yAxisId="options"
+                    type="monotone"
+                    dataKey={(d: any) => {
+                      const calls = d.callsByStrike[strike] || []
+                      if (calls.length === 0) return null
+                      const prices = calls.map((c: any) => [c.bid_price, c.ask_price, c.last_price, c.mark_price])
+                        .flat()
+                        .filter((p: any) => p !== null && p !== undefined && p > 0)
+                      return prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
+                    }}
+                    stroke={`hsl(${index * 60}, 70%, 50%)`}
+                    strokeWidth={1}
+                    dot={false}
+                    name={`Call $${strike}`}
+                    connectNulls={false}
+                  />
+                ))}
+                {strikes.slice(0, 5).map((strike, index) => (
+                  <Line
+                    key={`put-${strike}`}
+                    yAxisId="options"
+                    type="monotone"
+                    dataKey={(d: any) => {
+                      const puts = d.putsByStrike[strike] || []
+                      if (puts.length === 0) return null
+                      const prices = puts.map((p: any) => [p.bid_price, p.ask_price, p.last_price, p.mark_price])
+                        .flat()
+                        .filter((p: any) => p !== null && p !== undefined && p > 0)
+                      return prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
+                    }}
+                    stroke={`hsl(${index * 60 + 180}, 70%, 50%)`}
+                    strokeWidth={1}
+                    dot={false}
+                    name={`Put $${strike}`}
+                    connectNulls={false}
+                  />
+                ))}
+              </>
+            )
+          })()}
         </LineChart>
       </ResponsiveContainer>
     </div>
