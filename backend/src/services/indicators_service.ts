@@ -30,7 +30,7 @@ interface MinutePrice {
 export class IndicatorsService {
   public supabase: SupabaseClient;
   private sma9_cache: Map<string, MinutePrice[]> = new Map();
-  private session_data_cache: Map<string, { volume: number; pv_sum: number }> = new Map();
+  private session_data_cache: Map<string, { volume: number; pv_sum: number; last_total_volume?: number }> = new Map();
 
   constructor(url: string, key: string) {
     this.supabase = createClient(url, key);
@@ -134,7 +134,7 @@ export class IndicatorsService {
   private async calculateSessionVWAP(
     symbol: string, 
     current_price: number, 
-    current_volume: number, 
+    current_total_volume: number, 
     session_date: string
   ): Promise<{ vwap: number; session_start_time: string; session_volume: number; session_pv_sum: number }> {
     const cache_key = `${symbol}_${session_date}`;
@@ -147,28 +147,47 @@ export class IndicatorsService {
       const existing_data = await this.getSessionData(symbol, session_date);
       session_data = {
         volume: existing_data.volume,
-        pv_sum: existing_data.pv_sum
+        pv_sum: existing_data.pv_sum,
+        last_total_volume: existing_data.last_total_volume || 0
       };
     }
     
-    // Add current tick data
-    session_data.volume += current_volume;
-    session_data.pv_sum += current_price * current_volume;
+    // Calculate incremental volume (volume traded since last tick)
+    const incremental_volume = Math.max(0, current_total_volume - (session_data?.last_total_volume || 0));
     
-    // Update cache
-    this.session_data_cache.set(cache_key, session_data);
+    // Only add to VWAP if there was actual trading volume
+    if (incremental_volume > 0 && session_data) {
+      session_data.volume += incremental_volume;
+      session_data.pv_sum += current_price * incremental_volume;
+    }
     
-    // Calculate VWAP
-    const vwap = session_data.volume > 0 ? session_data.pv_sum / session_data.volume : current_price;
+    // Update last total volume for next calculation
+    if (session_data) {
+      session_data.last_total_volume = current_total_volume;
+      
+      // Update cache
+      this.session_data_cache.set(cache_key, session_data);
+      
+      // Calculate VWAP
+      const vwap = session_data.volume > 0 ? session_data.pv_sum / session_data.volume : current_price;
+      
+      // Get session start time
+      const session_start_time = await this.getSessionStartTime(symbol, session_date);
+      
+      return {
+        vwap,
+        session_start_time,
+        session_volume: session_data.volume,
+        session_pv_sum: session_data.pv_sum
+      };
+    }
     
-    // Get session start time
-    const session_start_time = await this.getSessionStartTime(symbol, session_date);
-    
+    // Fallback if session_data is undefined
     return {
-      vwap,
-      session_start_time,
-      session_volume: session_data.volume,
-      session_pv_sum: session_data.pv_sum
+      vwap: current_price,
+      session_start_time: '',
+      session_volume: 0,
+      session_pv_sum: 0
     };
   }
 
@@ -235,10 +254,10 @@ export class IndicatorsService {
   /**
    * Get existing session data for VWAP calculation
    */
-  private async getSessionData(symbol: string, session_date: string): Promise<{ volume: number; pv_sum: number }> {
+  private async getSessionData(symbol: string, session_date: string): Promise<{ volume: number; pv_sum: number; last_total_volume?: number }> {
     const { data, error } = await this.supabase
       .from('indicators')
-      .select('session_volume, session_pv_sum')
+      .select('session_volume, session_pv_sum, last_total_volume')
       .eq('symbol', symbol)
       .eq('session_date', session_date)
       .eq('is_market_hours', true)
@@ -252,11 +271,12 @@ export class IndicatorsService {
     if (data && data.length > 0) {
       return {
         volume: data[0].session_volume || 0,
-        pv_sum: data[0].session_pv_sum || 0
+        pv_sum: data[0].session_pv_sum || 0,
+        last_total_volume: data[0].last_total_volume || 0
       };
     }
 
-    return { volume: 0, pv_sum: 0 };
+    return { volume: 0, pv_sum: 0, last_total_volume: 0 };
   }
 
   /**

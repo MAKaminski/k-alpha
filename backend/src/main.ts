@@ -8,7 +8,7 @@ import { IndicatorsService } from './services/indicators_service.js';
 import { CrossoverDetector } from './services/crossover_detector.js';
 import { SchwabAuth } from './utils/schwab_auth.js';
 import { isWithinMarketHours } from './utils/market_hours.js';
-import { log } from './utils/logger.js';
+import { log, logInfo, logWarn, logError, LogLevel } from './utils/logger.js';
 import { withEnhancedRateLimit, getEnhancedRateLimitStatus, logRateLimitStatus } from './utils/enhanced_rate_limiter.js';
 import { requestTracker } from './utils/request_tracker.js';
 
@@ -181,8 +181,8 @@ async function check_for_crossover_signals(quote: any): Promise<void> {
 }
 
 async function start_service(): Promise<void> {
-  log(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL}`);
-  log(`Rate limit: 120 calls/min, using 5-second intervals (12 calls/min max)`);
+  logInfo(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL}`);
+  logInfo(`Rate limit: 120 calls/min, using 5-second intervals (12 calls/min max)`);
   
   // Start the main data fetching loop
   setInterval(
@@ -198,5 +198,30 @@ async function start_service(): Promise<void> {
   await fetch_and_store_quote();
 }
 
-start_service();
+// Add graceful shutdown handling
+process.on('SIGTERM', () => {
+  logInfo('Received SIGTERM, shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logInfo('Received SIGINT, shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('uncaughtException', (error) => {
+  logError(`Uncaught Exception: ${error.message}`);
+  logError(`Stack: ${error.stack}`);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logError(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  process.exit(1);
+});
+
+start_service().catch((error) => {
+  logError(`Failed to start service: ${error.message}`);
+  process.exit(1);
+});
 
