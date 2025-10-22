@@ -73,6 +73,8 @@ export function useRealtimeData() {
       const marketOpen = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0) // 9AM EST
       const marketClose = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0, 0) // 4PM EST
       
+      console.log('Fetching data from:', marketOpen.toISOString(), 'to:', marketClose.toISOString())
+      
       const [quotesResult, indicatorsResult, optionsResult] = await Promise.all([
         supabase
           .from('quotes')
@@ -107,8 +109,19 @@ export function useRealtimeData() {
       const indicators = indicatorsResult.data as Indicator[]
       const options = optionsResult.data as Option[]
 
+      console.log('Fetched data:', {
+        quotes: quotes.length,
+        indicators: indicators.length,
+        options: options.length,
+        firstQuote: quotes[0]?.timestamp,
+        lastQuote: quotes[quotes.length - 1]?.timestamp,
+        firstIndicator: indicators[0]?.timestamp,
+        lastIndicator: indicators[indicators.length - 1]?.timestamp
+      })
+
       // Combine and process data
       const combinedData = combineData(quotes, indicators, options)
+      console.log('Combined data points:', combinedData.length)
       setChartData(combinedData)
       
       // Set latest quote for display
@@ -198,7 +211,7 @@ export function useRealtimeData() {
       })
     })
 
-    // Process indicators
+    // Process indicators - match by closest timestamp instead of exact match
     indicators.forEach(indicator => {
       const time = new Date(indicator.timestamp)
       
@@ -207,16 +220,30 @@ export function useRealtimeData() {
         return
       }
       
-      const key = time.toISOString()
+      // Find the closest quote timestamp within 30 seconds
+      let closestKey = null
+      let closestTimeDiff = Infinity
       
-      const existing = dataMap.get(key)
-      if (existing) {
-        existing.sma9 = indicator.sma9
-        existing.session_vwap = indicator.session_vwap
-        existing.volume = indicator.volume
-        console.log('Indicator matched:', key, 'VWAP:', indicator.session_vwap)
+      for (const [key, data] of dataMap.entries()) {
+        const quoteTime = new Date(data.timestamp)
+        const timeDiff = Math.abs(time.getTime() - quoteTime.getTime())
+        
+        if (timeDiff < closestTimeDiff && timeDiff < 30000) { // Within 30 seconds
+          closestTimeDiff = timeDiff
+          closestKey = key
+        }
+      }
+      
+      if (closestKey) {
+        const existing = dataMap.get(closestKey)
+        if (existing) {
+          existing.sma9 = indicator.sma9
+          existing.session_vwap = indicator.session_vwap
+          existing.volume = indicator.volume
+          console.log('Indicator matched (closest):', closestKey, 'VWAP:', indicator.session_vwap, 'SMA9:', indicator.sma9)
+        }
       } else {
-        console.log('Indicator not matched:', key, 'VWAP:', indicator.session_vwap)
+        console.log('No close indicator match found for:', time.toISOString(), 'VWAP:', indicator.session_vwap)
       }
     })
 
