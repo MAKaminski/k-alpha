@@ -289,7 +289,7 @@ export class IndicatorsService {
    * Store indicators in database
    */
   private async storeIndicators(data: IndicatorData): Promise<void> {
-    const { error } = await this.client
+    const { error } = await this.supabase
       .from('indicators')
       .insert([data]);
 

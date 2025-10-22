@@ -135,10 +135,21 @@ export function useRealtimeData() {
     // Create a map of timestamps to data points
     const dataMap = new Map<string, ChartData>()
     const now = new Date()
+    
+    // Calculate trading day boundaries (8am-5pm EST with 1hr buffer)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const marketOpen = new Date(today.getTime() + 8 * 60 * 60 * 1000) // 8am EST
+    const marketEnd = new Date(today.getTime() + 17 * 60 * 60 * 1000) // 5pm EST
 
     // Process quotes
     quotes.forEach(quote => {
       const time = new Date(quote.timestamp)
+      
+      // Only include data within trading day (8am-5pm EST)
+      if (time < marketOpen || time > marketEnd) {
+        return
+      }
+      
       const key = time.toISOString()
       
       // Calculate relative time from now
@@ -170,6 +181,12 @@ export function useRealtimeData() {
     // Process indicators
     indicators.forEach(indicator => {
       const time = new Date(indicator.timestamp)
+      
+      // Only include data within trading day (8am-5pm EST)
+      if (time < marketOpen || time > marketEnd) {
+        return
+      }
+      
       const key = time.toISOString()
       
       const existing = dataMap.get(key)
@@ -183,6 +200,12 @@ export function useRealtimeData() {
     // Process options
     options.forEach(option => {
       const time = new Date(option.timestamp)
+      
+      // Only include data within trading day (8am-5pm EST)
+      if (time < marketOpen || time > marketEnd) {
+        return
+      }
+      
       const key = time.toISOString()
       
       const existing = dataMap.get(key)

@@ -1,5 +1,5 @@
 // import React from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceArea } from 'recharts'
 import { ChartData } from '../types/data'
 
 interface PriceChartProps {
@@ -17,6 +17,28 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   const maxPrice = Math.max(...prices)
   const priceRange = maxPrice - minPrice
   const padding = priceRange * 0.1
+
+  // Get current date for trading hours calculation
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  
+  // Calculate trading hours (9am-4pm EST, with 1hr buffer on each side = 8am-5pm)
+  const tradingStart = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9am EST
+  const tradingEnd = new Date(today.getTime() + 15 * 60 * 60 * 1000) // 3pm EST
+  const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4pm EST
+  
+  // Format times for chart
+  const formatTimeForChart = (date: Date) => {
+    const diffMs = now.getTime() - date.getTime()
+    const diffMinutes = Math.floor(diffMs / 60000)
+    const diffSeconds = Math.floor((diffMs % 60000) / 1000)
+    
+    if (diffMinutes > 0) {
+      return `${diffMinutes}m ${diffSeconds}s ago`
+    } else {
+      return `${diffSeconds}s ago`
+    }
+  }
 
   // Calculate options price range for right axis
   const allOptions = data.flatMap(d => [...d.calls, ...d.puts])
@@ -64,6 +86,25 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
+          />
+          {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
+          <ReferenceArea 
+            x1={formatTimeForChart(tradingStart)} 
+            x2={formatTimeForChart(new Date(today.getTime() + 10 * 60 * 60 * 1000))} 
+            y1={minPrice - padding} 
+            y2={maxPrice + padding} 
+            fill="rgba(128, 128, 128, 0.1)" 
+            stroke="rgba(128, 128, 128, 0.3)"
+            strokeDasharray="2 2"
+          />
+          <ReferenceArea 
+            x1={formatTimeForChart(tradingEnd)} 
+            x2={formatTimeForChart(marketClose)} 
+            y1={minPrice - padding} 
+            y2={maxPrice + padding} 
+            fill="rgba(128, 128, 128, 0.1)" 
+            stroke="rgba(128, 128, 128, 0.3)"
+            strokeDasharray="2 2"
           />
           <YAxis 
             yAxisId="price"
