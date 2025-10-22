@@ -69,11 +69,17 @@ export function useRealtimeData() {
       setLoading(true)
       
       // Fetch data for the entire trading day (9AM-4PM EST)
-      const today = new Date()
-      const marketOpen = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0) // 9AM EST
-      const marketClose = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0, 0) // 4PM EST
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       
+      // Set market hours in EST (9AM-4PM)
+      const marketOpen = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9AM EST
+      const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4PM EST
+      
+      console.log('Current time:', now.toISOString())
       console.log('Fetching data from:', marketOpen.toISOString(), 'to:', marketClose.toISOString())
+      console.log('Market open time:', marketOpen.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+      console.log('Market close time:', marketClose.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       
       const [quotesResult, indicatorsResult, optionsResult] = await Promise.all([
         supabase
@@ -116,7 +122,9 @@ export function useRealtimeData() {
         firstQuote: quotes[0]?.timestamp,
         lastQuote: quotes[quotes.length - 1]?.timestamp,
         firstIndicator: indicators[0]?.timestamp,
-        lastIndicator: indicators[indicators.length - 1]?.timestamp
+        lastIndicator: indicators[indicators.length - 1]?.timestamp,
+        firstQuoteTime: quotes[0] ? new Date(quotes[0].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A',
+        lastQuoteTime: quotes[quotes.length - 1] ? new Date(quotes[quotes.length - 1].timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'N/A'
       })
 
       // Combine and process data
@@ -143,10 +151,10 @@ export function useRealtimeData() {
     const dataMap = new Map<string, ChartData>()
     const now = new Date()
     
-    // Calculate trading day boundaries (8am-5pm EST with 1hr buffer)
+    // Calculate trading day boundaries (9am-4pm EST)
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const marketOpen = new Date(today.getTime() + 8 * 60 * 60 * 1000) // 8am EST
-    const marketEnd = new Date(today.getTime() + 17 * 60 * 60 * 1000) // 5pm EST
+    const marketOpen = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9am EST
+    const marketEnd = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4pm EST
 
     // Sort quotes by timestamp to calculate interval volume
     const sortedQuotes = [...quotes].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -398,6 +406,7 @@ export function useRealtimeData() {
       })
     }
   }
+
 
   return {
     chartData,

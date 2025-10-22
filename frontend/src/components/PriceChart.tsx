@@ -29,10 +29,20 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   
-  // Calculate trading hours (9am-4pm EST, with 1hr buffer on each side = 8am-5pm)
+  // Calculate trading hours (9am-4pm EST)
   const tradingStart = new Date(today.getTime() + 9 * 60 * 60 * 1000) // 9am EST
   const tradingEnd = new Date(today.getTime() + 15 * 60 * 60 * 1000) // 3pm EST
   const marketClose = new Date(today.getTime() + 16 * 60 * 60 * 1000) // 4pm EST
+  
+  // Create time labels for full market hours (9am-4pm)
+  const marketHoursLabels = []
+  for (let hour = 9; hour <= 16; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) { // Every 30 minutes
+      const time = new Date(today.getTime() + hour * 60 * 60 * 1000 + minute * 60 * 1000)
+      const timeLabel = `${hour}:${minute.toString().padStart(2, '0')}:00`
+      marketHoursLabels.push(timeLabel)
+    }
+  }
   
   // Format times for chart
   const formatTimeForChart = (date: Date) => {
@@ -103,6 +113,9 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             dataKey="time" 
             tick={{ fontSize: 12 }}
             interval="preserveStartEnd"
+            domain={['9:00:00', '16:00:00']}
+            type="category"
+            scale="point"
           />
           {/* Highlight trading hours (9am-10am and 3pm-4pm) */}
           <ReferenceArea 
