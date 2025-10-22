@@ -224,7 +224,7 @@ export function useRealtimeData() {
       let closestKey = null
       let closestTimeDiff = Infinity
       
-      for (const [key, data] of dataMap.entries()) {
+      dataMap.forEach((data, key) => {
         const quoteTime = new Date(data.timestamp)
         const timeDiff = Math.abs(time.getTime() - quoteTime.getTime())
         
@@ -232,7 +232,7 @@ export function useRealtimeData() {
           closestTimeDiff = timeDiff
           closestKey = key
         }
-      }
+      })
       
       if (closestKey) {
         const existing = dataMap.get(closestKey)
