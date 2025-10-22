@@ -8,7 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsc",
     "start": "node dist/main.js",
-    "postinstall": "npm prune --production",
+    "postinstall": "npm prune --omit=dev",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

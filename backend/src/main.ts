@@ -8,7 +8,7 @@ import { IndicatorsService } from './services/indicators_service.js';
 import { SchwabAuth } from './utils/schwab_auth.js';
 import { isWithinMarketHours } from './utils/market_hours.js';
 import { log } from './utils/logger.js';
-import { withRateLimit, getRateLimitStatus } from './utils/rate_limiter.js';
+import { withEnhancedRateLimit, getEnhancedRateLimitStatus, logRateLimitStatus } from './utils/enhanced_rate_limiter.js';
 
 const schwab_auth = new SchwabAuth(
   process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '',
@@ -43,8 +43,13 @@ const indicators_service = new IndicatorsService(
 
 async function fetch_and_store_quote(): Promise<void> {
   try {
-    // Use rate limiting for the API call
-    const quote = await withRateLimit(() => schwab_client.fetch_quote(CONSTANTS.QUOTE_SYMBOL));
+    // Use enhanced rate limiting with service tracking
+    const quote = await withEnhancedRateLimit(
+      'quotes',
+      '/quotes',
+      'GET',
+      () => schwab_client.fetch_quote(CONSTANTS.QUOTE_SYMBOL)
+    );
     
     await supabase.insert_quote({
       symbol: quote.symbol,
@@ -87,8 +92,13 @@ async function calculate_and_store_indicators(quote: any): Promise<void> {
 
 async function fetch_and_store_options(current_price: number): Promise<void> {
   try {
-    // Use rate limiting for the options API call
-    const options = await withRateLimit(() => options_client.fetch_0dte_options(CONSTANTS.QUOTE_SYMBOL, current_price));
+    // Use enhanced rate limiting with service tracking
+    const options = await withEnhancedRateLimit(
+      'options',
+      '/chains',
+      'GET',
+      () => options_client.fetch_0dte_options(CONSTANTS.QUOTE_SYMBOL, current_price)
+    );
     
     if (options.length > 0) {
       await options_supabase.insert_options(options);
@@ -124,12 +134,9 @@ async function start_service(): Promise<void> {
     CONSTANTS.FETCH_INTERVAL_MS
   );
   
-  // Start rate limit monitoring
+  // Start enhanced rate limit monitoring
   setInterval(() => {
-    const status = getRateLimitStatus();
-    if (status.currentCalls > 60) { // Warn at 50% of safe limit
-      log(`Rate limit warning: ${status.currentCalls}/90 calls used in last minute`);
-    }
+    logRateLimitStatus();
   }, 10000); // Check every 10 seconds
   
   await fetch_and_store_quote();
