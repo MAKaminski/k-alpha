@@ -106,6 +106,8 @@ export function useRealtimeData() {
       
       // Set latest quote for display
       if (quotes.length > 0) {
+        console.log('Initial quote loaded:', quotes[0])
+        console.log('Initial bid price:', quotes[0].bid_price, 'Initial ask price:', quotes[0].ask_price)
         setLatestQuote(quotes[0])
       }
       
@@ -238,6 +240,7 @@ export function useRealtimeData() {
     if (quote.symbol === 'QQQ') {
       // Update latest quote
       console.log('New quote received:', quote)
+      console.log('Bid price:', quote.bid_price, 'Ask price:', quote.ask_price)
       setLatestQuote(quote)
       
       setChartData(prev => {
