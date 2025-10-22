@@ -224,6 +224,7 @@ export function useRealtimeData() {
     const quote = payload.new as Quote
     if (quote.symbol === 'QQQ') {
       // Update latest quote
+      console.log('New quote received:', quote)
       setLatestQuote(quote)
       
       setChartData(prev => {

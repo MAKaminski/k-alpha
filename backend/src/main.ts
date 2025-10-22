@@ -10,6 +10,7 @@ import { SchwabAuth } from './utils/schwab_auth.js';
 import { isWithinMarketHours } from './utils/market_hours.js';
 import { log } from './utils/logger.js';
 import { withEnhancedRateLimit, getEnhancedRateLimitStatus, logRateLimitStatus } from './utils/enhanced_rate_limiter.js';
+import { requestTracker } from './utils/request_tracker.js';
 
 const schwab_auth = new SchwabAuth(
   process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '',
@@ -49,6 +50,8 @@ const crossover_detector = new CrossoverDetector(
 
 async function fetch_and_store_quote(): Promise<void> {
   try {
+    log(`📊 Starting fetch cycle - Current rate: ${requestTracker.getCurrentRequestCount()}/min`);
+    
     // Use enhanced rate limiting with service tracking
     const quote = await withEnhancedRateLimit(
       'quotes',
@@ -73,6 +76,7 @@ async function fetch_and_store_quote(): Promise<void> {
     
     // Fetch and store 0DTE options data (only during market hours)
     if (isWithinMarketHours()) {
+      log(`📈 Fetching options data - Current rate: ${requestTracker.getCurrentRequestCount()}/min`);
       await fetch_and_store_options(quote.last_price);
     }
     
@@ -178,7 +182,7 @@ async function check_for_crossover_signals(quote: any): Promise<void> {
 
 async function start_service(): Promise<void> {
   log(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL}`);
-  log(`Rate limit: 120 calls/min, using 2-second intervals (30 calls/min max)`);
+  log(`Rate limit: 120 calls/min, using 5-second intervals (12 calls/min max)`);
   
   // Start the main data fetching loop
   setInterval(
