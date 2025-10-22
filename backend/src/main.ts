@@ -88,7 +88,11 @@ async function fetch_and_store_options(current_price: number): Promise<void> {
       await options_supabase.insert_options(options);
       log(`Stored ${options.length} 0DTE options for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price}`);
     } else {
-      log(`No 0DTE options found for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price}`);
+      // This is normal when markets are closed or no 0DTE options are available
+      const now = new Date();
+      const is_market_hours = now.getHours() >= 9 && now.getHours() < 16 && now.getDay() >= 1 && now.getDay() <= 5;
+      const reason = is_market_hours ? 'no 0DTE options available' : 'markets closed';
+      log(`No 0DTE options found for ${CONSTANTS.QUOTE_SYMBOL} at $${current_price} (${reason})`);
     }
   } catch (error) {
     log(`Options error: ${error instanceof Error ? error.message : 'Unknown error'}`);

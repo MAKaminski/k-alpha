@@ -118,9 +118,36 @@ export class OptionsClient {
    * Fetch 0DTE options data for given underlying and current price
    */
   async fetch_0dte_options(underlying: string, current_price: number): Promise<OptionData[]> {
+    try {
+      const token = await this.get_current_token();
+      const today_str = this.get_today_date_string();
+      
+      // Use chains API to get all available options for today
+      const response = await fetch(
+        `${CONSTANTS.SCHWAB_API_BASE_URL}/chains?symbol=${underlying}&contractType=ALL&includeQuotes=TRUE&strategy=SINGLE&interval=1&strike=${current_price}&range=ALL`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Schwab API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return this.parse_chains_response(data, underlying, today_str);
+    } catch (error) {
+      console.error('Error fetching 0DTE options:', error);
+      throw error;
+    }
+  }
+
+  async fetch_options_for_date(underlying: string, current_price: number, expiration_date: string): Promise<OptionData[]> {
     const strikes = this.calculate_strikes(current_price);
-    const today_str = this.get_today_date_string();
-    const option_symbols = this.generate_option_symbols(underlying, strikes, today_str);
+    const option_symbols = this.generate_option_symbols(underlying, strikes, expiration_date);
     
     // Split into chunks of 50 (Schwab API limit)
     const chunks = [];
@@ -131,7 +158,7 @@ export class OptionsClient {
     const all_options: OptionData[] = [];
     
     for (const chunk of chunks) {
-      const options = await this.fetch_options_batch(chunk, underlying, today_str);
+      const options = await this.fetch_options_batch(chunk, underlying, expiration_date);
       all_options.push(...options);
     }
     
@@ -194,6 +221,72 @@ export class OptionsClient {
     }
     
     return options;
+  }
+
+  /**
+   * Parse Schwab chains API response
+   */
+  private parse_chains_response(data: any, underlying: string, expiration_date: string): OptionData[] {
+    const options: OptionData[] = [];
+    const today_key = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}:0`;
+    
+    // Process calls
+    if (data.callExpDateMap && data.callExpDateMap[today_key]) {
+      const calls = data.callExpDateMap[today_key];
+      for (const [strike_str, strike_data] of Object.entries(calls)) {
+        for (const [symbol, option_data] of Object.entries(strike_data as any)) {
+          const option = (option_data as any).option;
+          if (option) {
+            options.push(this.create_option_data(symbol, underlying, 'CALL', option, expiration_date));
+          }
+        }
+      }
+    }
+    
+    // Process puts
+    if (data.putExpDateMap && data.putExpDateMap[today_key]) {
+      const puts = data.putExpDateMap[today_key];
+      for (const [strike_str, strike_data] of Object.entries(puts)) {
+        for (const [symbol, option_data] of Object.entries(strike_data as any)) {
+          const option = (option_data as any).option;
+          if (option) {
+            options.push(this.create_option_data(symbol, underlying, 'PUT', option, expiration_date));
+          }
+        }
+      }
+    }
+    
+    return options;
+  }
+
+  /**
+   * Create OptionData from Schwab option data
+   */
+  private create_option_data(symbol: string, underlying: string, type: 'CALL' | 'PUT', option: any, expiration_date: string): OptionData {
+    return {
+      symbol: symbol,
+      underlying_symbol: underlying,
+      option_type: type,
+      strike_price: option.strikePrice || 0,
+      expiration_date: expiration_date,
+      days_to_expiration: option.daysToExpiration || 0,
+      bid_price: option.bid,
+      ask_price: option.ask,
+      last_price: option.last,
+      mark_price: option.mark,
+      volume: option.totalVolume,
+      open_interest: option.openInterest,
+      delta: option.delta,
+      gamma: option.gamma,
+      theta: option.theta,
+      vega: option.vega,
+      rho: option.rho,
+      implied_volatility: option.volatility,
+      intrinsic_value: option.intrinsicValue,
+      time_value: option.timeValue,
+      quote_time: option.quoteTime ? new Date(option.quoteTime).toISOString() : undefined,
+      timestamp: new Date().toISOString()
+    };
   }
 
   /**
