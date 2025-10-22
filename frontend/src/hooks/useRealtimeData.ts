@@ -169,6 +169,18 @@ export function useRealtimeData() {
     })
     
     console.log('Created chart data from indicators:', result.length, 'points')
+    console.log('Sample chart data:', result.slice(0, 3))
+    
+    // Debug: Check for any issues with the data
+    const hasValidPrices = result.every(d => d.last_price && d.last_price > 0)
+    const hasValidTimes = result.every(d => d.time && d.time.length > 0)
+    console.log('Data validation:', { hasValidPrices, hasValidTimes })
+    
+    if (!hasValidPrices) {
+      console.log('❌ Invalid prices detected!')
+      console.log('Sample invalid prices:', result.filter(d => !d.last_price || d.last_price <= 0).slice(0, 3))
+    }
+    
     return result
   }
 

@@ -18,8 +18,9 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     d.session_vwap
   ]).filter((price): price is number => price !== null && price !== undefined && !isNaN(price))
   
-  const minPrice = Math.min(...allPrices)
-  const maxPrice = Math.max(...allPrices)
+  // If no valid prices, use a default range
+  const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : 600
+  const maxPrice = allPrices.length > 0 ? Math.max(...allPrices) : 610
   
   // Add +/- $1 buffer rounded to nearest dollar
   const minPriceRounded = Math.floor(minPrice) - 1
