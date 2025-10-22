@@ -95,7 +95,7 @@ export function useRealtimeData() {
         sample: allDataResult.data?.[0]
       })
 
-      // Try to get any data first, then filter
+      // Get recent data regardless of market hours status
       const [indicatorsResult] = await Promise.all([
         supabase
           .from('indicators')
