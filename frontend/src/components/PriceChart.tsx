@@ -76,9 +76,22 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     console.log('Last data point:', data[data.length - 1])
     console.log('Sample data keys:', Object.keys(data[0]))
     console.log('Sample time values:', data.slice(0, 5).map(d => d.time))
+    console.log('Sample last_price values:', data.slice(0, 5).map(d => d.last_price))
+    console.log('Sample sma9 values:', data.slice(0, 5).map(d => d.sma9))
+    console.log('Sample session_vwap values:', data.slice(0, 5).map(d => d.session_vwap))
   }
 
-  const dataWithOptionPrices = data.map(d => {
+  // Filter out data points with null/undefined values for charting
+  const validData = data.filter(d => 
+    d.last_price != null && 
+    d.last_price > 0 && 
+    d.time != null && 
+    d.time !== ''
+  )
+  
+  console.log('Valid data points after filtering:', validData.length, 'out of', data.length)
+  
+  const dataWithOptionPrices = validData.map(d => {
     // Group calls by strike price for individual series
     const callsByStrike = d.calls.reduce((acc, call) => {
       const strike = call.strike_price

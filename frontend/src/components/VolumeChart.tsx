@@ -18,11 +18,21 @@ export function VolumeChart({ data }: VolumeChartProps) {
     console.log('Sample time values:', data.slice(0, 5).map(d => d.time))
   }
 
+  // Filter out data points with null/undefined values for charting
+  const validData = data.filter(d => 
+    d.volume != null && 
+    d.volume >= 0 && 
+    d.time != null && 
+    d.time !== ''
+  )
+  
+  console.log('Valid volume data points after filtering:', validData.length, 'out of', data.length)
+
   return (
     <div className="w-full h-48 bg-white rounded-lg shadow-lg p-4">
       <h3 className="text-lg font-semibold mb-4">Volume (Interval)</h3>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
+        <BarChart data={validData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="time" 
