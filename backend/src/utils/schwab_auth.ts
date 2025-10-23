@@ -14,23 +14,20 @@ interface TokenData extends TokenResponse {
 }
 
 const TOKEN_FILE_PATH = path.join(process.cwd(), '.schwab_tokens.json');
-const PAPER_TOKEN_FILE_PATH = path.join(process.cwd(), '.schwab_paper_tokens.json');
 
 export class SchwabAuth {
   private client_id: string;
   private client_secret: string;
   private redirect_uri: string;
   private cached_tokens: TokenData | null = null;
-  private is_paper_trading: boolean;
 
-  constructor(client_id: string, client_secret: string, redirect_uri: string, is_paper_trading: boolean = false) {
+  constructor(client_id: string, client_secret: string, redirect_uri: string) {
     this.client_id = client_id;
     this.client_secret = client_secret;
     this.redirect_uri = redirect_uri;
-    this.is_paper_trading = is_paper_trading;
     
     // Log the environment being used
-    console.log(`🔧 Schwab Environment: ${this.is_paper_trading ? 'PAPER TRADING' : 'LIVE TRADING'}`);
+    console.log(`🔧 Schwab Environment: LIVE TRADING`);
     console.log(`🔧 Using Client ID: ${this.client_id.substring(0, 8)}...`);
   }
 
@@ -103,15 +100,12 @@ export class SchwabAuth {
     
     // Try to save to file (works in local dev, may fail on Railway)
     try {
-      const tokenPath = this.is_paper_trading ? PAPER_TOKEN_FILE_PATH : TOKEN_FILE_PATH;
-      fs.writeFileSync(tokenPath, JSON.stringify(tokens, null, 2));
-      const envType = this.is_paper_trading ? 'PAPER' : 'LIVE';
-      console.log(`✅ ${envType} tokens saved to ${tokenPath}`);
+      fs.writeFileSync(TOKEN_FILE_PATH, JSON.stringify(tokens, null, 2));
+      console.log(`✅ LIVE tokens saved to ${TOKEN_FILE_PATH}`);
     } catch (error) {
       // On Railway/production, filesystem might be read-only or ephemeral
       // Tokens will stay in memory for current session
-      const envType = this.is_paper_trading ? 'PAPER' : 'LIVE';
-      console.warn(`Unable to save ${envType} tokens to file (production environment)`);
+      console.warn(`Unable to save LIVE tokens to file (production environment)`);
       console.warn('Tokens are cached in memory for this session');
       console.warn('Update SCHWAB_TOKENS environment variable before refresh token expires (7 days)');
     }
@@ -123,38 +117,24 @@ export class SchwabAuth {
       return this.cached_tokens;
     }
     
-    // Debug logging
-    console.log(`🔍 Token Loading Debug - Paper Trading: ${this.is_paper_trading}`);
-    console.log(`🔍 Token Loading Debug - SCHWAB_PAPER env var: ${process.env.SCHWAB_PAPER}`);
-    
     // Try loading from file first (local development)
     try {
-      const tokenPath = this.is_paper_trading ? PAPER_TOKEN_FILE_PATH : TOKEN_FILE_PATH;
-      console.log(`🔍 Token Loading Debug - Trying file path: ${tokenPath}`);
-      const data = fs.readFileSync(tokenPath, 'utf-8');
+      const data = fs.readFileSync(TOKEN_FILE_PATH, 'utf-8');
       const tokens = JSON.parse(data) as TokenData;
       this.cached_tokens = tokens;
-      console.log(`🔍 Token Loading Debug - Loaded from file: ${tokenPath}`);
       return tokens;
-    } catch (error) {
-      console.log(`🔍 Token Loading Debug - File load failed: ${error}`);
+    } catch {
       // If file doesn't exist, try environment variable (Railway/production)
-      const envVar = this.is_paper_trading ? 'SCHWAB_PAPER_TOKENS' : 'SCHWAB_TOKENS';
-      console.log(`🔍 Token Loading Debug - Trying env var: ${envVar}`);
-      console.log(`🔍 Token Loading Debug - Env var exists: ${!!process.env[envVar]}`);
-      
-      if (process.env[envVar]) {
+      if (process.env.SCHWAB_TOKENS) {
         try {
-          const tokens = JSON.parse(process.env[envVar]!) as TokenData;
+          const tokens = JSON.parse(process.env.SCHWAB_TOKENS) as TokenData;
           this.cached_tokens = tokens;
-          console.log(`🔍 Token Loading Debug - Loaded from env var: ${envVar}`);
           return tokens;
         } catch (error) {
-          console.error(`Failed to parse ${envVar} environment variable:`, error);
+          console.error('Failed to parse SCHWAB_TOKENS environment variable:', error);
           return null;
         }
       }
-      console.log(`🔍 Token Loading Debug - No tokens found`);
       return null;
     }
   }
@@ -203,9 +183,6 @@ function extract_code_from_url(callback_url: string): string {
 }
 
 export async function run_auth_flow(): Promise<void> {
-  const isPaperTrading = process.env.SCHWAB_PAPER === 'true';
-  
-  // Use same credentials for both live and paper trading
   const client_id = process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID;
   const client_secret = process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET;
   const redirect_uri = process.env.SCHWAB_CALLBACK_URL || process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1';
@@ -214,11 +191,10 @@ export async function run_auth_flow(): Promise<void> {
     throw new Error('SCHWAB_API_KEY and SCHWAB_API_SECRET must be set');
   }
 
-  const auth = new SchwabAuth(client_id, client_secret, redirect_uri, isPaperTrading);
+  const auth = new SchwabAuth(client_id, client_secret, redirect_uri);
 
-  const envType = isPaperTrading ? 'PAPER' : 'LIVE';
-  console.log(`\n=== Schwab OAuth Authentication (${envType} TRADING) ===\n`);
-  console.log(`🔧 Using ${envType} trading credentials`);
+  console.log(`\n=== Schwab OAuth Authentication (LIVE TRADING) ===\n`);
+  console.log(`🔧 Using LIVE trading credentials`);
   console.log('Step 1: Visit this URL in your browser:\n');
   console.log(auth.get_authorization_url());
   console.log('\nStep 2: After authorizing, you will be redirected to a URL.');

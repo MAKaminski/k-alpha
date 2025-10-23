@@ -7,11 +7,13 @@ interface ControlsProps {
   showVWAP: boolean
   showOptions: boolean
   showMarketHours: boolean
+  isTestMode: boolean
   onTogglePrice: () => void
   onToggleSMA9: () => void
   onToggleVWAP: () => void
   onToggleOptions: () => void
   onToggleMarketHours: () => void
+  onToggleTestMode: () => void
 }
 
 export function Controls({
@@ -20,24 +22,27 @@ export function Controls({
   showVWAP,
   showOptions,
   showMarketHours,
+  isTestMode,
   onTogglePrice,
   onToggleSMA9,
   onToggleVWAP,
   onToggleOptions,
-  onToggleMarketHours
+  onToggleMarketHours,
+  onToggleTestMode
 }: ControlsProps) {
   const controls = [
     { key: 'price', label: 'QQQ Price', show: showPrice, onToggle: onTogglePrice, color: '#2563eb' },
     { key: 'sma9', label: 'SMA9', show: showSMA9, onToggle: onToggleSMA9, color: '#dc2626' },
     { key: 'vwap', label: 'Session VWAP', show: showVWAP, onToggle: onToggleVWAP, color: '#16a34a' },
     { key: 'options', label: 'Options', show: showOptions, onToggle: onToggleOptions, color: '#f59e0b' },
-    { key: 'marketHours', label: 'Display Market-Hours', show: showMarketHours, onToggle: onToggleMarketHours, color: '#7c3aed' }
+    { key: 'marketHours', label: 'Display Market-Hours', show: showMarketHours, onToggle: onToggleMarketHours, color: '#7c3aed' },
+    { key: 'testMode', label: isTestMode ? 'TEST MODE' : 'LIVE MODE', show: isTestMode, onToggle: onToggleTestMode, color: isTestMode ? '#ef4444' : '#10b981' }
   ]
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
       <h3 className="text-lg font-semibold mb-4">Chart Controls</h3>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         {controls.map(control => (
           <button
             key={control.key}

@@ -30,6 +30,7 @@ export default function History() {
   const [showVWAP, setShowVWAP] = useState(true)
   const [showOptions, setShowOptions] = useState(true)
   const [showMarketHours, setShowMarketHours] = useState(true)
+  const [isTestMode, setIsTestMode] = useState(false)
 
   // Filter data based on market hours setting
   const filteredChartData = useMemo(() => {
@@ -71,7 +72,7 @@ export default function History() {
         <Header currentTime={currentTime} loading={loading} isLiveData={isLiveData} latestQuote={latestQuote} />
         
         {/* Account Balance Widget */}
-        <AccountBalanceWidget accountId="8042-3452" />
+        <AccountBalanceWidget accountId={isTestMode ? "TEST-ACCOUNT-001" : "8042-3452"} />
         
         {/* Crossover Widget */}
         <CrossoverWidget symbol="QQQ" sessionDate={currentDate} />
@@ -107,11 +108,13 @@ export default function History() {
           showVWAP={showVWAP}
           showOptions={showOptions}
           showMarketHours={showMarketHours}
+          isTestMode={isTestMode}
           onTogglePrice={() => setShowPrice(!showPrice)}
           onToggleSMA9={() => setShowSMA9(!showSMA9)}
           onToggleVWAP={() => setShowVWAP(!showVWAP)}
           onToggleOptions={() => setShowOptions(!showOptions)}
           onToggleMarketHours={() => setShowMarketHours(!showMarketHours)}
+          onToggleTestMode={() => setIsTestMode(!isTestMode)}
         />
 
         {loading ? (

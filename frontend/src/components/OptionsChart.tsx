@@ -27,20 +27,38 @@ export function OptionsChart({ currentPrice }: OptionsChartProps) {
   const [availableSeries, setAvailableSeries] = useState<string[]>([])
   const [visibleSeries, setVisibleSeries] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [selectedType, setSelectedType] = useState<'CALL' | 'PUT' | 'BOTH'>('BOTH')
+  const [selectedStrikes, setSelectedStrikes] = useState<Set<number>>(new Set())
 
   // Fetch options chart data
   const fetchOptionsData = async () => {
     try {
       setLoading(true)
       
-      const { data, error } = await supabase
+      // Only fetch data for selected strikes and types
+      let query = supabase
         .from('options_chart_data')
         .select('*')
         .gte('timestamp', new Date().toISOString().split('T')[0]) // Today's data
         .order('timestamp', { ascending: true })
+        .limit(500) // Reduced limit
+
+      // Filter by type if not BOTH
+      if (selectedType !== 'BOTH') {
+        query = query.eq('option_type', selectedType)
+      }
+
+      // Filter by selected strikes if any
+      if (selectedStrikes.size > 0) {
+        query = query.in('strike_price', Array.from(selectedStrikes))
+      }
+
+      const { data, error } = await query
 
       if (error) {
         console.error('Error fetching options data:', error)
+        setChartData([])
+        setAvailableSeries([])
         return
       }
 
@@ -55,19 +73,25 @@ export function OptionsChart({ currentPrice }: OptionsChartProps) {
       const processedData = processOptionsData(data)
       setChartData(processedData)
       
-      // Get available series
+      // Get available series from filtered data
       const series = Array.from(new Set(data.map(d => d.series_key)))
       setAvailableSeries(series)
       
-      // Auto-select series within ±$1 of current price
-      const relevantSeries = series.filter(seriesKey => {
-        const parts = seriesKey.split('_')
-        const strike = parseFloat(parts[1])
-        return Math.abs(strike - currentPrice) <= 1
-      })
-      
-      if (relevantSeries.length > 0) {
-        setVisibleSeries(new Set(relevantSeries))
+      // Auto-select series if none selected
+      if (visibleSeries.size === 0 && series.length > 0) {
+        // Select strikes within ±$2 of current price
+        const relevantSeries = series.filter(seriesKey => {
+          const parts = seriesKey.split('_')
+          const strike = parseFloat(parts[1])
+          return Math.abs(strike - currentPrice) <= 2
+        }).slice(0, 3) // Limit to 3 series max
+        
+        if (relevantSeries.length > 0) {
+          setVisibleSeries(new Set(relevantSeries))
+        } else if (series.length > 0) {
+          // Fallback to first few series
+          setVisibleSeries(new Set(series.slice(0, 3)))
+        }
       }
       
     } catch (error) {
@@ -134,10 +158,18 @@ export function OptionsChart({ currentPrice }: OptionsChartProps) {
   useEffect(() => {
     fetchOptionsData()
     
-    // Refresh data every 5 seconds
-    const interval = setInterval(fetchOptionsData, 5000)
+    // Refresh data every 30 seconds (matches backend)
+    const interval = setInterval(fetchOptionsData, 30000)
     return () => clearInterval(interval)
-  }, [currentPrice])
+  }, []) // Remove currentPrice dependency to prevent excessive refetching
+
+  // Refetch data when filters change
+  useEffect(() => {
+    // Only fetch if we have some strikes selected or if we're showing BOTH types
+    if (selectedStrikes.size > 0 || selectedType === 'BOTH') {
+      fetchOptionsData()
+    }
+  }, [selectedType, selectedStrikes])
 
   if (loading) {
     return (
@@ -161,35 +193,126 @@ export function OptionsChart({ currentPrice }: OptionsChartProps) {
     )
   }
 
+  // Get unique strikes from available series
+  const availableStrikes = Array.from(new Set(
+    availableSeries.map(seriesKey => {
+      const parts = seriesKey.split('_')
+      return parseFloat(parts[1])
+    })
+  )).sort((a, b) => a - b)
+
+  // Filter strikes by type
+  const filteredStrikes = availableStrikes.filter(strike => {
+    if (selectedType === 'BOTH') return true
+    const hasCall = availableSeries.some(s => s.includes(`CALL_${strike}`))
+    const hasPut = availableSeries.some(s => s.includes(`PUT_${strike}`))
+    return selectedType === 'CALL' ? hasCall : hasPut
+  })
+
   return (
-    <div className="w-full h-48 bg-white rounded-lg shadow-lg p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Options Prices</h3>
+    <div className="w-full h-64 bg-white rounded-lg shadow-lg p-4">
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold">Options Prices</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedType('CALL')}
+              className={`px-3 py-1 text-sm rounded ${
+                selectedType === 'CALL' 
+                  ? 'bg-green-100 text-green-800 border border-green-300' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-300'
+              }`}
+            >
+              CALLS
+            </button>
+            <button
+              onClick={() => setSelectedType('PUT')}
+              className={`px-3 py-1 text-sm rounded ${
+                selectedType === 'PUT' 
+                  ? 'bg-red-100 text-red-800 border border-red-300' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-300'
+              }`}
+            >
+              PUTS
+            </button>
+            <button
+              onClick={() => setSelectedType('BOTH')}
+              className={`px-3 py-1 text-sm rounded ${
+                selectedType === 'BOTH' 
+                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-300'
+              }`}
+            >
+              BOTH
+            </button>
+          </div>
+        </div>
+        
+        {/* Strike Selection */}
+        <div className="flex flex-wrap gap-1 mb-3">
+          {filteredStrikes.slice(0, 10).map(strike => {
+            const isSelected = selectedStrikes.has(strike)
+            const isNearPrice = Math.abs(strike - currentPrice) <= 2
+            
+            return (
+              <button
+                key={strike}
+                onClick={() => {
+                  const newSelected = new Set(selectedStrikes)
+                  if (newSelected.has(strike)) {
+                    newSelected.delete(strike)
+                  } else {
+                    newSelected.add(strike)
+                  }
+                  setSelectedStrikes(newSelected)
+                }}
+                className={`px-2 py-1 text-xs rounded border ${
+                  isSelected 
+                    ? 'bg-blue-100 text-blue-800 border-blue-300' 
+                    : isNearPrice
+                    ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                    : 'bg-gray-100 text-gray-600 border-gray-300'
+                }`}
+              >
+                ${strike}
+              </button>
+            )
+          })}
+        </div>
+        
+        {/* Selected Series Toggles */}
         {availableSeries.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {availableSeries.map((seriesKey, index) => {
-              const info = getSeriesInfo(seriesKey)
-              const isVisible = visibleSeries.has(seriesKey)
-              const color = getSeriesColor(seriesKey, index)
-              
-              return (
-                <button
-                  key={seriesKey}
-                  onClick={() => toggleSeries(seriesKey)}
-                  className={`px-2 py-1 text-xs rounded border ${
-                    isVisible 
-                      ? 'bg-blue-100 text-blue-800 border-blue-300' 
-                      : 'bg-gray-100 text-gray-600 border-gray-300'
-                  }`}
-                  style={{ 
-                    borderColor: isVisible ? color : undefined,
-                    backgroundColor: isVisible ? `${color}20` : undefined
-                  }}
-                >
-                  {info.type} ${info.strike}
-                </button>
-              )
-            })}
+            {availableSeries
+              .filter(seriesKey => {
+                const info = getSeriesInfo(seriesKey)
+                if (selectedType !== 'BOTH' && info.type !== selectedType) return false
+                if (selectedStrikes.size > 0 && !selectedStrikes.has(info.strike)) return false
+                return true
+              })
+              .slice(0, 6) // Limit to 6 visible series
+              .map((seriesKey, index) => {
+                const info = getSeriesInfo(seriesKey)
+                const isVisible = visibleSeries.has(seriesKey)
+                const color = getSeriesColor(seriesKey, index)
+                
+                return (
+                  <button
+                    key={seriesKey}
+                    onClick={() => toggleSeries(seriesKey)}
+                    className={`px-2 py-1 text-xs rounded border ${
+                      isVisible 
+                        ? 'text-white border-transparent' 
+                        : 'bg-gray-100 text-gray-600 border-gray-300'
+                    }`}
+                    style={{ 
+                      backgroundColor: isVisible ? color : undefined,
+                    }}
+                  >
+                    {info.type} ${info.strike}
+                  </button>
+                )
+              })}
           </div>
         )}
       </div>

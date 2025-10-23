@@ -4,6 +4,7 @@ import { SchwabClient } from './services/schwab_client.js';
 import { OptionsClient } from './services/options_client.js';
 import { AccountClient } from './services/account_client.js';
 import { AccountSupabaseService } from './services/account_supabase.js';
+import { TestDataService } from './services/test_data_service.js';
 import { SupabaseService } from './services/supabase_client.js';
 import { OptionsSupabaseService } from './services/options_supabase.js';
 import { IndicatorsService } from './services/indicators_service.js';
@@ -14,18 +15,17 @@ import { log, logInfo, logWarn, logError, LogLevel } from './utils/logger.js';
 import { withEnhancedRateLimit, getEnhancedRateLimitStatus, logRateLimitStatus } from './utils/enhanced_rate_limiter.js';
 import { requestTracker } from './utils/request_tracker.js';
 
-// Determine if we're using paper trading
-const isPaperTrading = process.env.SCHWAB_PAPER === 'true';
+// Determine if we're in test mode
+const isTestMode = process.env.TEST_MODE === 'true';
 
-// Use same credentials for both live and paper trading
+// Use live trading credentials
 const clientId = process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '';
 const clientSecret = process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET || '';
 
 const schwab_auth = new SchwabAuth(
   clientId,
   clientSecret,
-  process.env.SCHWAB_CALLBACK_URL || process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1',
-  isPaperTrading
+  process.env.SCHWAB_CALLBACK_URL || process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1'
 );
 
 const schwab_client = new SchwabClient(
@@ -54,6 +54,11 @@ const options_supabase = new OptionsSupabaseService(
 );
 
 const account_supabase = new AccountSupabaseService(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+);
+
+const test_data_service = new TestDataService(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_KEY!
 );
@@ -112,11 +117,7 @@ async function fetch_and_store_quote(): Promise<void> {
     // Calculate and store technical indicators
     await calculate_and_store_indicators(quote);
     
-    // Fetch and store 0DTE options data (only during market hours)
-    if (isWithinMarketHours()) {
-      log(`📈 Fetching options data - Current rate: ${requestTracker.getCurrentRequestCount()}/min`);
-      await fetch_and_store_options(quote.last_price);
-    }
+    // Note: Options data fetching moved to separate 30-second interval
     
   } catch (error) {
     log(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -220,32 +221,66 @@ async function check_for_crossover_signals(quote: any): Promise<void> {
 
 async function fetch_account_balance(): Promise<void> {
   try {
-    // Use the same account ID for both live and paper trading
-    // The difference is in the tokens, not the account ID
-    const account_id = process.env.SCHWAB_ACCOUNT_ID || '8042-3452';
-    
-    // Use enhanced rate limiting with service tracking
-    const account_data = await withEnhancedRateLimit(
-      'account',
-      '/accounts',
-      'GET',
-      () => account_client.fetch_account_balance(account_id)
-    );
-    
-    currentAccountBalance = account_data;
-    
-    // Store account balance data in Supabase for historical tracking
-    await account_supabase.insert_account_balance({
-      account_id: account_data.account_id,
-      account_type: account_data.account_type,
-      account_number: account_data.account_number,
-      current_balance: account_data.current_balance,
-      available_cash: account_data.available_cash,
-      buying_power: account_data.buying_power,
-      timestamp: account_data.timestamp.toISOString()
-    });
-    
-    log(`💰 Account ${account_data.account_id}: $${account_data.current_balance.toFixed(2)} (Cash: $${account_data.available_cash.toFixed(2)}, Buying Power: $${account_data.buying_power.toFixed(2)}) - Saved to DB`);
+    if (isTestMode) {
+      // Use test data for paper trading
+      const test_balance = await test_data_service.getLatestTestBalance();
+      
+      if (test_balance) {
+        currentAccountBalance = {
+          account_id: test_balance.account_id,
+          account_type: test_balance.account_type,
+          account_number: test_balance.account_number,
+          current_balance: test_balance.current_balance,
+          available_cash: test_balance.available_cash,
+          buying_power: test_balance.buying_power,
+          timestamp: new Date(test_balance.timestamp)
+        };
+        
+        // Store test account balance in Supabase (same table as live data)
+        await account_supabase.insert_account_balance({
+          account_id: test_balance.account_id,
+          account_type: test_balance.account_type,
+          account_number: test_balance.account_number,
+          current_balance: test_balance.current_balance,
+          available_cash: test_balance.available_cash,
+          buying_power: test_balance.buying_power,
+          timestamp: test_balance.timestamp
+        });
+        
+        log(`💰 TEST Account ${test_balance.account_id}: $${test_balance.current_balance.toFixed(2)} (Cash: $${test_balance.available_cash.toFixed(2)}, Buying Power: $${test_balance.buying_power.toFixed(2)}) - Saved to DB`);
+      } else {
+        logWarn('No test account balance found - initializing with $100K');
+        await test_data_service.fundAccount('TEST-ACCOUNT-001', 100000, 'Initial funding');
+        // Recursive call to get the newly created balance
+        await fetch_account_balance();
+      }
+    } else {
+      // Use live Schwab data
+      const account_id = process.env.SCHWAB_ACCOUNT_ID || '8042-3452';
+      
+      // Use enhanced rate limiting with service tracking
+      const account_data = await withEnhancedRateLimit(
+        'account',
+        '/accounts',
+        'GET',
+        () => account_client.fetch_account_balance(account_id)
+      );
+      
+      currentAccountBalance = account_data;
+      
+      // Store account balance data in Supabase for historical tracking
+      await account_supabase.insert_account_balance({
+        account_id: account_data.account_id,
+        account_type: account_data.account_type,
+        account_number: account_data.account_number,
+        current_balance: account_data.current_balance,
+        available_cash: account_data.available_cash,
+        buying_power: account_data.buying_power,
+        timestamp: account_data.timestamp.toISOString()
+      });
+      
+      log(`💰 LIVE Account ${account_data.account_id}: $${account_data.current_balance.toFixed(2)} (Cash: $${account_data.available_cash.toFixed(2)}, Buying Power: $${account_data.buying_power.toFixed(2)}) - Saved to DB`);
+    }
     
   } catch (error) {
     logError(`Account balance error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -253,11 +288,11 @@ async function fetch_account_balance(): Promise<void> {
 }
 
 async function start_service(): Promise<void> {
-  const envType = isPaperTrading ? 'PAPER' : 'LIVE';
-  logInfo(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL} (${envType} TRADING)`);
+  const mode = isTestMode ? 'TEST MODE' : 'LIVE TRADING';
+  logInfo(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL} (${mode})`);
   logInfo(`Rate limit: 120 calls/min, using 5-second intervals (12 calls/min max)`);
-  logInfo(`🔧 Schwab Environment: ${envType} TRADING`);
-  logInfo(`🔧 Account ID: ${process.env.SCHWAB_ACCOUNT_ID || '8042-3452'}`);
+  logInfo(`🔧 Mode: ${mode}`);
+  logInfo(`🔧 Account ID: ${isTestMode ? 'TEST-ACCOUNT-001' : (process.env.SCHWAB_ACCOUNT_ID || '8042-3452')}`);
   
   // Fetch initial account balance
   await fetch_account_balance();
@@ -273,6 +308,16 @@ async function start_service(): Promise<void> {
     fetch_account_balance,
     5000
   );
+  
+  // Start options data fetching (every 30 seconds, only during market hours)
+  setInterval(async () => {
+    if (isWithinMarketHours() && currentAccountBalance && currentAccountBalance.current_balance > 0) {
+      log(`📈 Fetching options data - Current rate: ${requestTracker.getCurrentRequestCount()}/min`);
+      await fetch_and_store_options(currentAccountBalance.current_balance);
+    } else {
+      logInfo('Skipping options fetch: Outside market hours or no account balance available.');
+    }
+  }, 30000); // Every 30 seconds
   
   // Start enhanced rate limit monitoring
   setInterval(() => {
