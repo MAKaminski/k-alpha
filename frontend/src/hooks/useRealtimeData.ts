@@ -165,6 +165,21 @@ export function useRealtimeData() {
       const indicators = indicatorsResult.data as Indicator[]
       const quotes: Quote[] = [] // No quotes table available
       const options: Option[] = [] // No options table available
+      
+      // Fetch crossover signals for today
+      const { data: crossovers, error: crossoversError } = await supabase
+        .from('crossover_signals')
+        .select('*')
+        .eq('symbol', 'QQQ')
+        .gte('timestamp', today.toISOString())
+        .lt('timestamp', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString())
+        .order('timestamp', { ascending: true })
+
+      if (crossoversError) {
+        console.error('Error fetching crossovers:', crossoversError)
+      } else {
+        console.log('Fetched crossovers:', crossovers?.length || 0)
+      }
 
       console.log('Fetched data:', {
         quotes: quotes.length,
@@ -185,7 +200,7 @@ export function useRealtimeData() {
       })
 
       // Combine and process data
-      const combinedData = combineData(quotes, indicators, options)
+      const combinedData = combineData(quotes, indicators, options, crossovers || [])
       console.log('Combined data points:', combinedData.length)
       
       // Set the chart data
@@ -263,7 +278,7 @@ export function useRealtimeData() {
     return result
   }
 
-  const combineData = (quotes: Quote[], indicators: Indicator[], options: Option[]): ChartData[] => {
+  const combineData = (quotes: Quote[], indicators: Indicator[], options: Option[], crossovers: any[]): ChartData[] => {
     // Since we only have indicators data, create chart data from indicators
     console.log(`Processing ${indicators.length} indicators for chart data`)
     
@@ -299,6 +314,54 @@ export function useRealtimeData() {
         ask: price + 0.01,
         is_market_hours: indicator.is_market_hours // Add this field for filtering
       })
+    })
+    
+    // Process crossovers and add to data points
+    crossovers.forEach(crossover => {
+      const time = new Date(crossover.timestamp)
+      
+      if (isNaN(time.getTime())) {
+        console.warn('Invalid crossover timestamp found:', crossover.timestamp)
+        return
+      }
+      
+      const timeLabel = time.toLocaleString('en-US', { 
+        timeZone: 'America/New_York',
+        hour12: true,
+        hour: 'numeric',
+        minute: '2-digit'
+      })
+      
+      // Find existing data point at this timestamp
+      const existingIndex = result.findIndex(d => d.timestamp === crossover.timestamp)
+      
+      if (existingIndex >= 0) {
+        // Add crossover to existing data point
+        result[existingIndex].crossover = crossover
+      } else {
+        // Create new data point for crossover if no indicator exists at this time
+        result.push({
+          timestamp: crossover.timestamp,
+          time: timeLabel,
+          last_price: crossover.last_price,
+          sma9: crossover.sma9,
+          session_vwap: crossover.session_vwap,
+          volume: 0, // No volume data for crossover-only points
+          calls: [],
+          puts: [],
+          bid: crossover.last_price - 0.01,
+          ask: crossover.last_price + 0.01,
+          is_market_hours: crossover.is_market_hours,
+          crossover: crossover
+        })
+      }
+    })
+    
+    // Sort by timestamp after adding crossovers
+    result.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime()
+      const timeB = new Date(b.timestamp).getTime()
+      return timeA - timeB
     })
     
     console.log('Created chart data from indicators:', result.length, 'points')

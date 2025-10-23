@@ -119,8 +119,21 @@ export function useDayData() {
         return
       }
 
+      // Fetch crossover signals for the specific date
+      const { data: crossovers, error: crossoversError } = await supabase
+        .from('crossover_signals')
+        .select('*')
+        .gte('timestamp', startOfDayUTC)
+        .lte('timestamp', endOfDayUTC)
+        .order('timestamp', { ascending: true })
+
+      if (crossoversError) {
+        console.error('Error fetching crossovers:', crossoversError)
+        return
+      }
+
       // Process data into chart format
-      const processedData = processDataForChart(quotes || [], indicators || [], options || [])
+      const processedData = processDataForChart(quotes || [], indicators || [], options || [], crossovers || [])
       setChartData(processedData)
       
       // Mark as live data if we have data
@@ -135,7 +148,7 @@ export function useDayData() {
     }
   }
 
-  const processDataForChart = (quotes: any[], indicators: any[], options: any[]): ChartData[] => {
+  const processDataForChart = (quotes: any[], indicators: any[], options: any[], crossovers: any[]): ChartData[] => {
     // Create a map of timestamp to data point
     const dataMap = new Map<string, ChartData>()
 
@@ -233,6 +246,46 @@ export function useDayData() {
         } else {
           existing.puts.push(optionData)
         }
+      }
+    })
+
+    // Process crossovers and add to data points
+    crossovers.forEach(crossover => {
+      const timestamp = new Date(crossover.timestamp)
+      
+      if (isNaN(timestamp.getTime())) {
+        console.warn('Invalid crossover timestamp found:', crossover.timestamp)
+        return
+      }
+      
+      const timeKey = timestamp.toISOString()
+      const existingData = dataMap.get(timeKey)
+      
+      if (existingData) {
+        // Add crossover to existing data point
+        existingData.crossover = crossover
+      } else {
+        // Create new data point for crossover if no quote exists at this time
+        const timeLabel = timestamp.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true,
+          timeZone: 'America/New_York'
+        })
+        
+        dataMap.set(timeKey, {
+          time: timeLabel,
+          timestamp: crossover.timestamp,
+          last_price: crossover.last_price,
+          sma9: crossover.sma9,
+          session_vwap: crossover.session_vwap,
+          volume: 0, // No volume data for crossover-only points
+          calls: [],
+          puts: [],
+          bid: 0,
+          ask: 0,
+          crossover: crossover
+        })
       }
     })
 

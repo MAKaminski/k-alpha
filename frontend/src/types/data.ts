@@ -51,6 +51,25 @@ export interface Option {
   created_at: string
 }
 
+export interface CrossoverSignal {
+  id: number
+  symbol: string
+  timestamp: string
+  last_price: number
+  sma9: number
+  session_vwap: number
+  signal_type: 'BULLISH' | 'BEARISH'
+  crossover_direction: 'UP' | 'DOWN'
+  price_at_crossover: number
+  sma9_at_crossover: number
+  vwap_at_crossover: number
+  previous_sma9: number | null
+  previous_vwap: number | null
+  is_market_hours: boolean
+  session_date: string
+  created_at: string
+}
+
 export interface ChartData {
   timestamp: string
   time: string
@@ -63,6 +82,7 @@ export interface ChartData {
   bid: number
   ask: number
   is_market_hours?: boolean
+  crossover?: CrossoverSignal
 }
 
 export interface AccountBalance {

@@ -317,6 +317,30 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
               </>
             )
           })()}
+          
+          {/* Crossover markers */}
+          {dataWithOptionPrices.map((d, index) => {
+            if (!d.crossover) return null;
+            
+            const crossover = d.crossover;
+            const isBullish = crossover.signal_type === 'BULLISH';
+            const markerColor = isBullish ? '#10b981' : '#ef4444'; // Green for bullish, red for bearish
+            const markerSymbol = isBullish ? '▲' : '▼';
+            
+            return (
+              <ReferenceArea
+                key={`crossover-${index}`}
+                x1={d.time}
+                x2={d.time}
+                y1={crossover.price_at_crossover - 2}
+                y2={crossover.price_at_crossover + 2}
+                fill={markerColor}
+                fillOpacity={0.8}
+                stroke={markerColor}
+                strokeWidth={2}
+              />
+            );
+          })}
         </LineChart>
         </ResponsiveContainer>
       )}

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Header } from '../src/components/Header'
 import { AccountBalanceWidget } from '../src/components/AccountBalance'
+import { CrossoverWidget } from '../src/components/CrossoverWidget'
 import { Controls } from '../src/components/Controls'
 import { PriceChart } from '../src/components/PriceChart'
 import { VolumeChart } from '../src/components/VolumeChart'
@@ -45,6 +46,9 @@ export default function Home() {
         
         {/* Account Balance Widget */}
         <AccountBalanceWidget accountId="8042-3452" />
+        
+        {/* Crossover Widget */}
+        <CrossoverWidget symbol="QQQ" sessionDate={new Date().toISOString().split('T')[0]} />
         
         {/* Navigation */}
         <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
