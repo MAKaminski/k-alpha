@@ -270,7 +270,7 @@ export class IndicatorsService {
       console.log('last_total_volume column not found, falling back to basic query');
       const fallbackResult = await this.supabase
         .from('indicators')
-        .select('session_volume, session_pv_sum')
+        .select('session_volume, session_pv_sum, last_total_volume')
         .eq('symbol', symbol)
         .eq('session_date', session_date)
         .eq('is_market_hours', true)
