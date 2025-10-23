@@ -123,26 +123,38 @@ export class SchwabAuth {
       return this.cached_tokens;
     }
     
+    // Debug logging
+    console.log(`🔍 Token Loading Debug - Paper Trading: ${this.is_paper_trading}`);
+    console.log(`🔍 Token Loading Debug - SCHWAB_PAPER env var: ${process.env.SCHWAB_PAPER}`);
+    
     // Try loading from file first (local development)
     try {
       const tokenPath = this.is_paper_trading ? PAPER_TOKEN_FILE_PATH : TOKEN_FILE_PATH;
+      console.log(`🔍 Token Loading Debug - Trying file path: ${tokenPath}`);
       const data = fs.readFileSync(tokenPath, 'utf-8');
       const tokens = JSON.parse(data) as TokenData;
       this.cached_tokens = tokens;
+      console.log(`🔍 Token Loading Debug - Loaded from file: ${tokenPath}`);
       return tokens;
-    } catch {
+    } catch (error) {
+      console.log(`🔍 Token Loading Debug - File load failed: ${error}`);
       // If file doesn't exist, try environment variable (Railway/production)
       const envVar = this.is_paper_trading ? 'SCHWAB_PAPER_TOKENS' : 'SCHWAB_TOKENS';
+      console.log(`🔍 Token Loading Debug - Trying env var: ${envVar}`);
+      console.log(`🔍 Token Loading Debug - Env var exists: ${!!process.env[envVar]}`);
+      
       if (process.env[envVar]) {
         try {
           const tokens = JSON.parse(process.env[envVar]!) as TokenData;
           this.cached_tokens = tokens;
+          console.log(`🔍 Token Loading Debug - Loaded from env var: ${envVar}`);
           return tokens;
         } catch (error) {
           console.error(`Failed to parse ${envVar} environment variable:`, error);
           return null;
         }
       }
+      console.log(`🔍 Token Loading Debug - No tokens found`);
       return null;
     }
   }
