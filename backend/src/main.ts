@@ -238,7 +238,7 @@ async function fetch_account_balance(): Promise<void> {
     log(`💰 Account ${account_data.account_id}: $${account_data.current_balance.toFixed(2)} (Cash: $${account_data.available_cash.toFixed(2)}, Buying Power: $${account_data.buying_power.toFixed(2)}) - Saved to DB`);
     
   } catch (error) {
-    log(`Account balance error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logError(`Account balance error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
