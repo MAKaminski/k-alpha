@@ -101,7 +101,7 @@ export class AccountClient {
       throw new Error(`Schwab Accounts API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     console.log(`🔍 Accounts API Debug - Response data:`, JSON.stringify(data, null, 2));
     
     // Handle different response structures
