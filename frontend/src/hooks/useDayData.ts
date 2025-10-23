@@ -164,12 +164,12 @@ export function useDayData() {
 
       if (existing) {
         const optionData = {
-          symbol: option.symbol,
+          id: option.id || 0,
           underlying_symbol: option.underlying_symbol,
+          option_symbol: option.symbol,
           option_type: option.option_type,
           strike_price: option.strike_price,
           expiration_date: option.expiration_date,
-          days_to_expiration: option.days_to_expiration,
           bid_price: option.bid_price,
           ask_price: option.ask_price,
           last_price: option.last_price,
@@ -182,10 +182,9 @@ export function useDayData() {
           vega: option.vega,
           rho: option.rho,
           implied_volatility: option.implied_volatility,
-          intrinsic_value: option.intrinsic_value,
           time_value: option.time_value,
-          quote_time: option.quote_time,
-          timestamp: option.timestamp
+          timestamp: option.timestamp,
+          created_at: option.created_at || option.timestamp
         }
 
         if (option.option_type === 'CALL') {
