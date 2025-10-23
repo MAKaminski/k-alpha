@@ -125,10 +125,15 @@ export class AccountClient {
     }
     
     return accounts.map(account => {
+      console.log(`🔍 Account API Debug - Processing account:`, JSON.stringify(account, null, 2));
+      
       const securitiesAccount = account.securitiesAccount;
       const currentBalances = securitiesAccount.currentBalances;
       
-      return {
+      console.log(`🔍 Account API Debug - Securities Account:`, JSON.stringify(securitiesAccount, null, 2));
+      console.log(`🔍 Account API Debug - Current Balances:`, JSON.stringify(currentBalances, null, 2));
+      
+      const result = {
         account_id: securitiesAccount.accountNumber,
         account_type: securitiesAccount.type,
         account_number: securitiesAccount.accountNumber,
@@ -137,6 +142,10 @@ export class AccountClient {
         buying_power: currentBalances.buyingPower || 0,
         timestamp: nowEST()
       };
+      
+      console.log(`🔍 Account API Debug - Processed result:`, JSON.stringify(result, null, 2));
+      
+      return result;
     });
   }
 }
