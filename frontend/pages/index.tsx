@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import Link from 'next/link'
 import { Header } from '../src/components/Header'
 import { Controls } from '../src/components/Controls'
 import { PriceChart } from '../src/components/PriceChart'
 import { VolumeChart } from '../src/components/VolumeChart'
 import { useRealtimeData } from '../src/hooks/useRealtimeData'
+import { History, BarChart3 } from 'lucide-react'
 
 export default function Home() {
   const { chartData, currentTime, loading, latestQuote, mounted } = useRealtimeData()
@@ -29,6 +31,20 @@ export default function Home() {
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
         <Header currentTime={currentTime} loading={loading} latestQuote={latestQuote} />
+        
+        {/* Navigation */}
+        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">Real-time Data</h2>
+            <Link 
+              href="/history"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              <History size={16} />
+              <span>View Historical Data</span>
+            </Link>
+          </div>
+        </div>
         
         <Controls
           showPrice={showPrice}
