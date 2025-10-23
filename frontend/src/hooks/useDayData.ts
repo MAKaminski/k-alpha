@@ -8,6 +8,7 @@ export function useDayData() {
   const [availableDates, setAvailableDates] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [refetching, setRefetching] = useState(false)
+  const [isLiveData, setIsLiveData] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   // Handle client-side mounting
@@ -121,6 +122,11 @@ export function useDayData() {
       // Process data into chart format
       const processedData = processDataForChart(quotes || [], indicators || [], options || [])
       setChartData(processedData)
+      
+      // Mark as live data if we have data
+      if (processedData.length > 0) {
+        setIsLiveData(true)
+      }
 
     } catch (error) {
       console.error('Error fetching data for date:', error)
@@ -266,6 +272,7 @@ export function useDayData() {
     availableDates,
     loading: loading || refetching,
     refetching,
+    isLiveData,
     changeDate,
     refetchDataForDate,
     mounted

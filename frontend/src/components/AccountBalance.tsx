@@ -88,7 +88,7 @@ export function AccountBalanceWidget({ accountId }: AccountBalanceProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-lg p-6 mb-6" data-testid="account-balance-widget">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800 flex items-center">
           <DollarSign className="h-5 w-5 mr-2 text-green-600" />
@@ -106,7 +106,7 @@ export function AccountBalanceWidget({ accountId }: AccountBalanceProps) {
             <CreditCard className="h-4 w-4 text-gray-600 mr-2" />
             <span className="text-sm font-medium text-gray-600">Account ID</span>
           </div>
-          <p className="text-lg font-semibold text-gray-800">{accountBalance.account_id}</p>
+          <p className="text-lg font-semibold text-gray-800" data-testid="account-id">{accountBalance.account_id}</p>
           <p className="text-xs text-gray-500">{accountBalance.account_type}</p>
         </div>
 
@@ -116,7 +116,7 @@ export function AccountBalanceWidget({ accountId }: AccountBalanceProps) {
             <TrendingUp className="h-4 w-4 text-green-600 mr-2" />
             <span className="text-sm font-medium text-green-700">Total Balance</span>
           </div>
-          <p className="text-2xl font-bold text-green-800">
+          <p className="text-2xl font-bold text-green-800" data-testid="current-balance">
             {formatCurrency(accountBalance.current_balance)}
           </p>
         </div>
@@ -127,7 +127,7 @@ export function AccountBalanceWidget({ accountId }: AccountBalanceProps) {
             <DollarSign className="h-4 w-4 text-blue-600 mr-2" />
             <span className="text-sm font-medium text-blue-700">Available Cash</span>
           </div>
-          <p className="text-xl font-semibold text-blue-800">
+          <p className="text-xl font-semibold text-blue-800" data-testid="available-cash">
             {formatCurrency(accountBalance.available_cash)}
           </p>
         </div>
@@ -138,7 +138,7 @@ export function AccountBalanceWidget({ accountId }: AccountBalanceProps) {
             <Zap className="h-4 w-4 text-purple-600 mr-2" />
             <span className="text-sm font-medium text-purple-700">Buying Power</span>
           </div>
-          <p className="text-xl font-semibold text-purple-800">
+          <p className="text-xl font-semibold text-purple-800" data-testid="buying-power">
             {formatCurrency(accountBalance.buying_power)}
           </p>
         </div>
@@ -148,7 +148,7 @@ export function AccountBalanceWidget({ accountId }: AccountBalanceProps) {
       <div className="mt-4 pt-4 border-t border-gray-200">
         <div className="flex items-center justify-between text-sm text-gray-500">
           <span>Account Number: {accountBalance.account_number}</span>
-          <span>Last Data: {formatTime(accountBalance.timestamp)}</span>
+          <span data-testid="last-updated">Last Data: {formatTime(accountBalance.timestamp)}</span>
         </div>
       </div>
     </div>

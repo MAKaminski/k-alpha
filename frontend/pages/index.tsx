@@ -10,7 +10,7 @@ import { filterMarketHoursData } from '../src/utils/marketHours'
 import { History, BarChart3 } from 'lucide-react'
 
 export default function Home() {
-  const { chartData, currentTime, loading, latestQuote, mounted } = useRealtimeData()
+  const { chartData, currentTime, loading, isLiveData, latestQuote, mounted } = useRealtimeData()
   
   const [showPrice, setShowPrice] = useState(true)
   const [showSMA9, setShowSMA9] = useState(true)
@@ -41,7 +41,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header currentTime={currentTime} loading={loading} latestQuote={latestQuote} />
+        <Header currentTime={currentTime} loading={loading} isLiveData={isLiveData} latestQuote={latestQuote} />
         
         {/* Account Balance Widget */}
         <AccountBalanceWidget accountId="8042-3452" />

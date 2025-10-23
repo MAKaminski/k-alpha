@@ -7,6 +7,7 @@ export function useRealtimeData() {
   const [chartData, setChartData] = useState<ChartData[]>([])
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [isLiveData, setIsLiveData] = useState(false)
   const [latestQuote, setLatestQuote] = useState<Quote | null>(null)
   const [mounted, setMounted] = useState(false)
 
@@ -195,6 +196,11 @@ export function useRealtimeData() {
         console.log('Initial quote loaded:', quotes[0])
         console.log('Initial bid price:', quotes[0].bid_price, 'Initial ask price:', quotes[0].ask_price)
         setLatestQuote(quotes[0])
+      }
+      
+      // Mark as live data once we have data
+      if (combinedData.length > 0) {
+        setIsLiveData(true)
       }
       
     } catch (error) {
@@ -442,6 +448,7 @@ export function useRealtimeData() {
     chartData,
     currentTime,
     loading,
+    isLiveData,
     latestQuote,
     mounted
   }

@@ -1,4 +1,5 @@
 import { CONSTANTS } from '../config/constants.js';
+import { nowEST } from '../utils/timezone.js';
 
 interface AccountData {
   account_id: string;
@@ -134,7 +135,7 @@ export class AccountClient {
         current_balance: currentBalances.liquidationValue || currentBalances.equity || 0,
         available_cash: currentBalances.availableFunds || currentBalances.cashBalance || 0,
         buying_power: currentBalances.buyingPower || 0,
-        timestamp: new Date()
+        timestamp: nowEST()
       };
     });
   }

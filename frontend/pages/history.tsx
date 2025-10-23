@@ -17,6 +17,7 @@ export default function History() {
     availableDates, 
     loading, 
     refetching,
+    isLiveData,
     changeDate, 
     refetchDataForDate, 
     mounted 
@@ -48,7 +49,9 @@ export default function History() {
     )
   }
 
+  // Current time for header
   const currentTime = new Date()
+  
   const latestQuote = chartData.length > 0 ? {
     id: 0,
     symbol: 'QQQ',
@@ -63,7 +66,7 @@ export default function History() {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header currentTime={currentTime} loading={loading} latestQuote={latestQuote} />
+        <Header currentTime={currentTime} loading={loading} isLiveData={isLiveData} latestQuote={latestQuote} />
         
         {/* Account Balance Widget */}
         <AccountBalanceWidget accountId="8042-3452" />

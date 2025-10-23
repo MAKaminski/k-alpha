@@ -5,10 +5,11 @@ import { Quote } from '../types/data'
 interface HeaderProps {
   currentTime: Date
   loading: boolean
+  isLiveData?: boolean
   latestQuote?: Quote | null
 }
 
-export function Header({ currentTime, loading, latestQuote }: HeaderProps) {
+export function Header({ currentTime, loading, isLiveData, latestQuote }: HeaderProps) {
   const formatTime = (date: Date) => {
     return format(date, 'MMM dd, yyyy - hh:mm:ss a')
   }
@@ -24,8 +25,8 @@ export function Header({ currentTime, loading, latestQuote }: HeaderProps) {
           <div className="text-2xl font-mono font-bold">
             {formatTime(currentTime)} EST
           </div>
-          <div className="text-blue-100 text-sm">
-            {loading ? 'Loading...' : 'Live Data'}
+          <div className="text-blue-100 text-sm" data-testid="data-status">
+            {loading ? 'Loading...' : (isLiveData ? 'Live Data' : 'No Data')}
           </div>
           {latestQuote && (
             <div className="mt-2 text-sm">
