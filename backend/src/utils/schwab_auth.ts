@@ -193,22 +193,13 @@ function extract_code_from_url(callback_url: string): string {
 export async function run_auth_flow(): Promise<void> {
   const isPaperTrading = process.env.SCHWAB_PAPER === 'true';
   
-  // Use paper trading credentials if enabled, otherwise use live credentials
-  const client_id = isPaperTrading 
-    ? (process.env.SCHWAB_PAPER_API_KEY || process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID)
-    : (process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID);
-    
-  const client_secret = isPaperTrading
-    ? (process.env.SCHWAB_PAPER_API_SECRET || process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET)
-    : (process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET);
-    
+  // Use same credentials for both live and paper trading
+  const client_id = process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID;
+  const client_secret = process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET;
   const redirect_uri = process.env.SCHWAB_CALLBACK_URL || process.env.SCHWAB_REDIRECT_URI || 'https://127.0.0.1';
 
   if (!client_id || !client_secret) {
-    const envType = isPaperTrading ? 'PAPER' : 'LIVE';
-    const keyVar = isPaperTrading ? 'SCHWAB_PAPER_API_KEY' : 'SCHWAB_API_KEY';
-    const secretVar = isPaperTrading ? 'SCHWAB_PAPER_API_SECRET' : 'SCHWAB_API_SECRET';
-    throw new Error(`${keyVar} and ${secretVar} must be set for ${envType} trading`);
+    throw new Error('SCHWAB_API_KEY and SCHWAB_API_SECRET must be set');
   }
 
   const auth = new SchwabAuth(client_id, client_secret, redirect_uri, isPaperTrading);

@@ -17,14 +17,9 @@ import { requestTracker } from './utils/request_tracker.js';
 // Determine if we're using paper trading
 const isPaperTrading = process.env.SCHWAB_PAPER === 'true';
 
-// Use paper trading credentials if enabled, otherwise use live credentials
-const clientId = isPaperTrading 
-  ? (process.env.SCHWAB_PAPER_API_KEY || process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '')
-  : (process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '');
-
-const clientSecret = isPaperTrading
-  ? (process.env.SCHWAB_PAPER_API_SECRET || process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET || '')
-  : (process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET || '');
+// Use same credentials for both live and paper trading
+const clientId = process.env.SCHWAB_API_KEY || process.env.SCHWAB_CLIENT_ID || '';
+const clientSecret = process.env.SCHWAB_API_SECRET || process.env.SCHWAB_CLIENT_SECRET || '';
 
 const schwab_auth = new SchwabAuth(
   clientId,
@@ -225,10 +220,9 @@ async function check_for_crossover_signals(quote: any): Promise<void> {
 
 async function fetch_account_balance(): Promise<void> {
   try {
-    // Use paper trading account ID if paper trading is enabled
-    const account_id = isPaperTrading 
-      ? (process.env.SCHWAB_PAPER_ACCOUNT_ID || '8042-3452')
-      : (process.env.SCHWAB_ACCOUNT_ID || '8042-3452');
+    // Use the same account ID for both live and paper trading
+    // The difference is in the tokens, not the account ID
+    const account_id = process.env.SCHWAB_ACCOUNT_ID || '8042-3452';
     
     // Use enhanced rate limiting with service tracking
     const account_data = await withEnhancedRateLimit(
@@ -263,7 +257,7 @@ async function start_service(): Promise<void> {
   logInfo(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL} (${envType} TRADING)`);
   logInfo(`Rate limit: 120 calls/min, using 5-second intervals (12 calls/min max)`);
   logInfo(`🔧 Schwab Environment: ${envType} TRADING`);
-  logInfo(`🔧 Account ID: ${isPaperTrading ? (process.env.SCHWAB_PAPER_ACCOUNT_ID || '8042-3452') : (process.env.SCHWAB_ACCOUNT_ID || '8042-3452')}`);
+  logInfo(`🔧 Account ID: ${process.env.SCHWAB_ACCOUNT_ID || '8042-3452'}`);
   
   // Fetch initial account balance
   await fetch_account_balance();
