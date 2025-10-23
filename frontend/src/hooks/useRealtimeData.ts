@@ -325,12 +325,8 @@ export function useRealtimeData() {
         const existingIndex = newData.findIndex(d => d.timestamp === key)
         if (existingIndex >= 0) {
           newData[existingIndex].last_price = parseFloat(quote.last_price.toString())
-          // Calculate interval volume for existing data point
-          if (existingIndex > 0) {
-            const prevQuote = newData[existingIndex - 1]
-            const intervalVolume = Math.max(0, quote.volume - (prevQuote.volume + (prevQuote.volume || 0)))
-            newData[existingIndex].volume = intervalVolume
-          }
+          // Don't carry forward volume - set to 0 if not available
+          newData[existingIndex].volume = quote.volume || 0
           newData[existingIndex].bid = parseFloat(quote.bid_price.toString())
           newData[existingIndex].ask = parseFloat(quote.ask_price.toString())
         } else {

@@ -84,21 +84,60 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     })))
   }
 
-  // Create a complete dataset with actual data range
+  // Create a complete dataset with full 24-hour range
   const createCompleteDataset = () => {
-    // Sort the valid data by time
-    const sortedData = [...validData].sort((a, b) => {
-      // Parse time strings to compare them properly
-      const timeA = a.time.split(':').map(Number)
-      const timeB = b.time.split(':').map(Number)
-      return (timeA[0] * 3600 + timeA[1] * 60 + timeA[2]) - (timeB[0] * 3600 + timeB[1] * 60 + timeB[2])
+    if (validData.length === 0) return []
+    
+    // Get the date from the first data point
+    const firstDataPoint = validData[0]
+    const date = new Date(firstDataPoint.timestamp)
+    const dateStr = date.toISOString().split('T')[0]
+    
+    // Create a map of existing data by time
+    const dataMap = new Map<string, ChartData>()
+    validData.forEach(d => {
+      const time = new Date(d.timestamp)
+      const timeKey = time.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true,
+        timeZone: 'America/New_York'
+      })
+      dataMap.set(timeKey, d)
     })
     
-    // Return the actual data with proper time formatting
-    return sortedData.map(d => ({
-      ...d,
-      time: d.time // Keep the original time format
-    }))
+    // Create 24-hour dataset with 1-hour intervals
+    const completeDataset: ChartData[] = []
+    for (let hour = 0; hour < 24; hour++) {
+      const time = new Date(dateStr + `T${hour.toString().padStart(2, '0')}:00:00`)
+      const timeKey = time.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true,
+        timeZone: 'America/New_York'
+      })
+      
+      const existingData = dataMap.get(timeKey)
+      if (existingData) {
+        completeDataset.push(existingData)
+      } else {
+        // Create empty data point for missing hours
+        completeDataset.push({
+          time: timeKey,
+          last_price: 0,
+          bid: 0,
+          ask: 0,
+          volume: 0,
+          timestamp: time.toISOString(),
+          sma9: null,
+          session_vwap: null,
+          calls: [],
+          puts: []
+        })
+      }
+    }
+    
+    return completeDataset
   }
   
   const completeData = createCompleteDataset()
