@@ -19,12 +19,21 @@ export function VolumeChart({ data }: VolumeChartProps) {
   }
 
   // Filter out data points with null/undefined values for charting
-  const validData = data.filter(d => 
-    d.volume != null && 
-    d.volume >= 0 && 
-    d.time != null && 
-    d.time !== ''
-  )
+  const validData = data.filter(d => {
+    // Check for valid volume
+    if (d.volume == null || d.volume < 0) return false
+    
+    // Check for valid time
+    if (d.time == null || d.time === '') return false
+    
+    // Check for valid timestamp
+    if (d.timestamp) {
+      const date = new Date(d.timestamp)
+      if (isNaN(date.getTime())) return false
+    }
+    
+    return true
+  })
   
   console.log('Valid volume data points after filtering:', validData.length, 'out of', data.length)
 

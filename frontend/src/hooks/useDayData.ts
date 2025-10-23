@@ -43,8 +43,11 @@ export function useDayData() {
       // Extract unique dates from timestamps
       const dates = new Set<string>()
       data?.forEach(quote => {
-        const date = new Date(quote.timestamp).toISOString().split('T')[0]
-        dates.add(date)
+        const timestamp = new Date(quote.timestamp)
+        if (!isNaN(timestamp.getTime())) {
+          const date = timestamp.toISOString().split('T')[0]
+          dates.add(date)
+        }
       })
 
       const sortedDates = Array.from(dates).sort((a, b) => b.localeCompare(a))

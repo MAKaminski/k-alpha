@@ -54,12 +54,21 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
 
   // Filter out data points with invalid price or time values
   // Allow null sma9 and session_vwap values as they may not be available initially
-  const validData = data.filter(d => 
-    d.last_price != null && 
-    d.last_price > 0 && 
-    d.time != null && 
-    d.time !== ''
-  )
+  const validData = data.filter(d => {
+    // Check for valid price
+    if (d.last_price == null || d.last_price <= 0) return false
+    
+    // Check for valid time
+    if (d.time == null || d.time === '') return false
+    
+    // Check for valid timestamp
+    if (d.timestamp) {
+      const date = new Date(d.timestamp)
+      if (isNaN(date.getTime())) return false
+    }
+    
+    return true
+  })
   
   console.log('Valid data points after filtering:', validData.length, 'out of', data.length)
   if (validData.length > 0) {
