@@ -124,10 +124,10 @@ export function useDayData() {
       const timestamp = new Date(quote.timestamp)
       const timeKey = timestamp.toISOString()
       const timeLabel = timestamp.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+        hour: 'numeric', 
         minute: '2-digit', 
-        second: '2-digit',
-        hour12: false 
+        hour12: true,
+        timeZone: 'America/New_York'
       })
 
       dataMap.set(timeKey, {

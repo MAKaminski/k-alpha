@@ -207,16 +207,13 @@ export function useRealtimeData() {
     chartData.forEach((data, index) => {
       const time = new Date(data.timestamp)
       
-      // Format time as HH:MM:SS in EST for consistent display
-      const estTime = time.toLocaleString('en-US', { 
+      // Format time as HH:MM AM/PM in EST for consistent display
+      const timeLabel = time.toLocaleString('en-US', { 
         timeZone: 'America/New_York',
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
+        hour12: true,
+        hour: 'numeric',
+        minute: '2-digit'
       })
-      
-      const timeLabel = estTime
       
       // Use the close price from aggregated data (convert string to number)
       const price = parseFloat(data.close_price.toString())
@@ -263,16 +260,13 @@ export function useRealtimeData() {
     indicators.forEach((indicator, index) => {
       const time = new Date(indicator.timestamp)
       
-      // Format time as HH:MM:SS in EST for consistent display
-      const estTime = time.toLocaleString('en-US', { 
+      // Format time as HH:MM AM/PM in EST for consistent display
+      const timeLabel = time.toLocaleString('en-US', { 
         timeZone: 'America/New_York',
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
+        hour12: true,
+        hour: 'numeric',
+        minute: '2-digit'
       })
-      
-      const timeLabel = estTime
       
       // Use the actual price data from the database (convert string to number)
       const price = parseFloat(indicator.last_price.toString())
