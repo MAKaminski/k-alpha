@@ -39,29 +39,43 @@ export class AccountClient {
   }
 
   async fetch_account_balance(account_id: string): Promise<AccountData> {
-    // First, try to get all accounts to find the correct account hash
-    const accounts = await this.fetch_accounts();
-    
-    // Find the account that matches our target account ID
-    const targetAccount = accounts.find(acc => 
-      acc.account_id === account_id || 
-      acc.account_number === account_id ||
-      acc.account_id.includes(account_id) ||
-      acc.account_number.includes(account_id)
-    );
-    
-    if (!targetAccount) {
-      console.log(`🔍 Account API Debug - Available accounts:`, accounts.map(acc => ({ id: acc.account_id, number: acc.account_number })));
-      throw new Error(`Account ${account_id} not found in available accounts`);
+    try {
+      // First, try to get all accounts to find the correct account hash
+      const accounts = await this.fetch_accounts();
+      
+      console.log(`🔍 Account API Debug - Retrieved ${accounts.length} accounts`);
+      
+      // Find the account that matches our target account ID
+      const targetAccount = accounts.find(acc => 
+        acc.account_id === account_id || 
+        acc.account_number === account_id ||
+        acc.account_id.includes(account_id) ||
+        acc.account_number.includes(account_id)
+      );
+      
+      if (!targetAccount) {
+        console.log(`🔍 Account API Debug - Available accounts:`, accounts.map(acc => ({ 
+          id: acc.account_id, 
+          number: acc.account_number,
+          type: acc.account_type 
+        })));
+        throw new Error(`Account ${account_id} not found in available accounts`);
+      }
+      
+      console.log(`🔍 Account API Debug - Found target account:`, {
+        id: targetAccount.account_id,
+        number: targetAccount.account_number,
+        type: targetAccount.account_type,
+        balance: targetAccount.current_balance,
+        cash: targetAccount.available_cash,
+        buying_power: targetAccount.buying_power
+      });
+      
+      return targetAccount;
+    } catch (error) {
+      console.log(`🔍 Account API Debug - Error in fetch_account_balance:`, error);
+      throw error;
     }
-    
-    console.log(`🔍 Account API Debug - Found target account:`, {
-      id: targetAccount.account_id,
-      number: targetAccount.account_number,
-      type: targetAccount.account_type
-    });
-    
-    return targetAccount;
   }
 
   async fetch_accounts(): Promise<AccountData[]> {
@@ -87,9 +101,21 @@ export class AccountClient {
       throw new Error(`Schwab Accounts API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json() as { accounts: SchwabAccountResponse[] };
+    const data = await response.json();
+    console.log(`🔍 Accounts API Debug - Response data:`, JSON.stringify(data, null, 2));
     
-    return data.accounts.map(account => ({
+    // Handle different response structures
+    let accounts: SchwabAccountResponse[];
+    if (data.accounts && Array.isArray(data.accounts)) {
+      accounts = data.accounts;
+    } else if (Array.isArray(data)) {
+      accounts = data;
+    } else {
+      console.log(`🔍 Accounts API Debug - Unexpected response structure:`, typeof data, Object.keys(data || {}));
+      throw new Error(`Unexpected response structure from accounts API`);
+    }
+    
+    return accounts.map(account => ({
       account_id: account.accountId,
       account_type: account.accountType,
       account_number: account.accountNumber,
