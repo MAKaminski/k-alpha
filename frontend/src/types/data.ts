@@ -62,4 +62,5 @@ export interface ChartData {
   puts: Option[]
   bid: number
   ask: number
+  is_market_hours?: boolean
 }

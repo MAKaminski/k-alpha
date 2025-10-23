@@ -271,6 +271,9 @@ export function useRealtimeData() {
       // Use the actual price data from the database (convert string to number)
       const price = parseFloat(indicator.last_price.toString())
       
+      // Debug: Log market hours info
+      console.log(`Indicator ${index}: timestamp=${indicator.timestamp}, timeLabel=${timeLabel}, is_market_hours=${indicator.is_market_hours}`)
+      
       result.push({
         timestamp: indicator.timestamp,
         time: timeLabel,
@@ -281,7 +284,8 @@ export function useRealtimeData() {
         calls: [],
         puts: [],
         bid: price - 0.01,
-        ask: price + 0.01
+        ask: price + 0.01,
+        is_market_hours: indicator.is_market_hours // Add this field for filtering
       })
     })
     

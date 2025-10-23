@@ -63,12 +63,21 @@ export function getSessionDate(timestamp: string | Date): string {
 export function filterMarketHoursData<T extends { timestamp: string; is_market_hours?: boolean }>(
   data: T[]
 ): T[] {
-  return data.filter(item => {
+  console.log(`Filtering ${data.length} data points for market hours`);
+  
+  const filtered = data.filter(item => {
     // If is_market_hours is available, use it
     if (item.is_market_hours !== undefined) {
-      return item.is_market_hours;
+      const result = item.is_market_hours;
+      console.log(`Item ${item.timestamp}: is_market_hours=${item.is_market_hours} -> ${result ? 'KEEP' : 'FILTER'}`);
+      return result;
     }
     // Otherwise, calculate based on timestamp
-    return isWithinMarketHours(item.timestamp);
+    const result = isWithinMarketHours(item.timestamp);
+    console.log(`Item ${item.timestamp}: calculated market hours=${result} -> ${result ? 'KEEP' : 'FILTER'}`);
+    return result;
   });
+  
+  console.log(`Market hours filter result: ${filtered.length} out of ${data.length} data points kept`);
+  return filtered;
 }
