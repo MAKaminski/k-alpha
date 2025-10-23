@@ -65,7 +65,7 @@ export class SchwabClient {
       ask_price: quote.askPrice || 0,
       last_price: quote.lastPrice || 0,
       volume: quote.totalVolume || 0,
-      timestamp: new Date(quote.quoteTime || Date.now())
+      timestamp: new Date() // Use current time instead of potentially stale quoteTime
     };
   }
 }
