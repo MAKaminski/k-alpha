@@ -133,8 +133,8 @@ export function useDayData() {
       dataMap.set(timeKey, {
         time: timeLabel,
         last_price: quote.last_price,
-        bid_price: quote.bid_price,
-        ask_price: quote.ask_price,
+        bid: quote.bid_price,
+        ask: quote.ask_price,
         volume: quote.volume,
         timestamp: quote.timestamp,
         sma9: null,
