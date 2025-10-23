@@ -69,12 +69,13 @@ export function VolumeChart({ data }: VolumeChartProps) {
             interval="preserveStartEnd"
             type="category"
           />
-          <YAxis 
-            yAxisId="volume"
-            orientation="left"
-            tick={{ fontSize: 12 }}
-            label={{ value: 'Volume', angle: -90, position: 'insideLeft' }}
-          />
+        <YAxis
+          yAxisId="volume"
+          orientation="left"
+          tick={{ fontSize: 12 }}
+          tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+          label={{ value: 'Volume (K)', angle: -90, position: 'insideLeft' }}
+        />
           <YAxis 
             yAxisId="spacer"
             orientation="right"

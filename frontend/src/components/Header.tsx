@@ -25,8 +25,17 @@ export function Header({ currentTime, loading, isLiveData, latestQuote }: Header
           <div className="text-2xl font-mono font-bold">
             {formatTime(currentTime)} EST
           </div>
-          <div className="text-blue-100 text-sm" data-testid="data-status">
-            {loading ? 'Loading...' : (isLiveData ? 'Live Data' : 'No Data')}
+          <div className="text-sm" data-testid="data-status">
+            {isLiveData ? (
+              <span className="text-cyan-400 font-bold animate-pulse" style={{ 
+                textShadow: '0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 30px #06b6d4',
+                filter: 'drop-shadow(0 0 5px #06b6d4)'
+              }}>
+                Live Data
+              </span>
+            ) : (
+              <span className="text-gray-300">No Data</span>
+            )}
           </div>
           {latestQuote && (
             <div className="mt-2 text-sm">

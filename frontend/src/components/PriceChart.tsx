@@ -1,5 +1,5 @@
-// import React from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceArea } from 'recharts'
+import React, { useState, useMemo } from 'react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Scatter } from 'recharts'
 import { ChartData } from '../types/data'
 
 interface PriceChartProps {
@@ -11,6 +11,73 @@ interface PriceChartProps {
 }
 
 export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }: PriceChartProps) {
+  // State for toggling individual option series
+  const [visibleOptions, setVisibleOptions] = useState<Set<string>>(new Set())
+  
+  // Process options data and create series
+  const optionsSeries = useMemo(() => {
+    if (!showOptions) return []
+    
+    const seriesMap = new Map<string, { strike: number, type: 'CALL' | 'PUT', data: any[] }>()
+    
+    data.forEach(d => {
+      // Process calls
+      d.calls?.forEach(call => {
+        const key = `CALL_${call.strike_price}`
+        if (!seriesMap.has(key)) {
+          seriesMap.set(key, { strike: call.strike_price, type: 'CALL', data: [] })
+        }
+        seriesMap.get(key)!.data.push({
+          time: d.time,
+          price: call.last_price || call.mark_price || call.bid_price || 0,
+          volume: call.volume || 0,
+          openInterest: call.open_interest || 0
+        })
+      })
+      
+      // Process puts
+      d.puts?.forEach(put => {
+        const key = `PUT_${put.strike_price}`
+        if (!seriesMap.has(key)) {
+          seriesMap.set(key, { strike: put.strike_price, type: 'PUT', data: [] })
+        }
+        seriesMap.get(key)!.data.push({
+          time: d.time,
+          price: put.last_price || put.mark_price || put.bid_price || 0,
+          volume: put.volume || 0,
+          openInterest: put.open_interest || 0
+        })
+      })
+    })
+    
+    return Array.from(seriesMap.entries()).map(([key, series]) => ({
+      key,
+      strike: series.strike,
+      type: series.type,
+      data: series.data,
+      visible: visibleOptions.has(key)
+    }))
+  }, [data, showOptions, visibleOptions])
+  
+  // Initialize visible options to ±1 strikes around current price
+  React.useEffect(() => {
+    if (data.length > 0 && optionsSeries.length > 0) {
+      const currentPrice = data[data.length - 1]?.last_price || 0
+      const newVisible = new Set<string>()
+      
+      optionsSeries.forEach(series => {
+        const diff = Math.abs(series.strike - currentPrice)
+        if (diff <= 1) { // Within $1 of current price
+          newVisible.add(series.key)
+        }
+      })
+      
+      if (newVisible.size > 0) {
+        setVisibleOptions(newVisible)
+      }
+    }
+  }, [data, optionsSeries])
+  
   // Calculate price range for left axis including all price data (QQQ, SMA9, VWAP)
   const allPrices = data.flatMap(d => [
     d.last_price,
@@ -144,9 +211,40 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     console.log('Last chart data point:', dataWithOptionPrices[dataWithOptionPrices.length - 1])
   }
 
+  const toggleOptionSeries = (key: string) => {
+    setVisibleOptions(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(key)) {
+        newSet.delete(key)
+      } else {
+        newSet.add(key)
+      }
+      return newSet
+    })
+  }
+
   return (
     <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
-      <h3 className="text-lg font-semibold mb-4">QQQ Price & Options</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">QQQ Price & Options</h3>
+        {showOptions && optionsSeries.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {optionsSeries.map(series => (
+              <button
+                key={series.key}
+                onClick={() => toggleOptionSeries(series.key)}
+                className={`px-2 py-1 text-xs rounded ${
+                  series.visible 
+                    ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                    : 'bg-gray-100 text-gray-600 border border-gray-300'
+                }`}
+              >
+                {series.type} ${series.strike}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {validData.length === 0 ? (
         <div className="flex items-center justify-center h-full text-gray-500">
           <p>No data available</p>
@@ -234,113 +332,74 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             />
           )}
           
-          {showOptions && dataWithOptionPrices.length > 0 && (() => {
-            // Debug: Log options data
-            console.log('Options data for chart:', dataWithOptionPrices.map(d => ({
-              time: d.time,
-              calls: d.calls.length,
-              puts: d.puts.length,
-              callStrikes: d.calls.map(c => c.strike_price),
-              putStrikes: d.puts.map(p => p.strike_price)
-            })).slice(0, 3))
+          {/* Options series */}
+          {showOptions && optionsSeries.map(series => {
+            if (!series.visible) return null
             
-            // Get all unique strike prices from all data points
-            const allStrikes = new Set<number>()
-            
-            dataWithOptionPrices.forEach(d => {
-              d.calls.forEach(call => allStrikes.add(call.strike_price))
-              d.puts.forEach(put => allStrikes.add(put.strike_price))
-            })
-            
-            const strikes = Array.from(allStrikes).sort((a, b) => a - b)
-            console.log('All strikes found:', strikes)
-            
-            // Only show strikes closest to current price
-            const currentPrice = dataWithOptionPrices[dataWithOptionPrices.length - 1]?.last_price || 0
-            const relevantStrikes = strikes
-              .filter(strike => Math.abs(strike - currentPrice) <= 20) // Within $20 of current price
-              .slice(0, 3) // Show max 3 strikes
-            
-            console.log('Relevant strikes for current price', currentPrice, ':', relevantStrikes)
-            
-            if (relevantStrikes.length === 0) {
-              console.log('No relevant strikes found for options plotting')
-              return null
-            }
+            const color = series.type === 'CALL' ? '#3b82f6' : '#ef4444'
+            const strokeDash = series.type === 'CALL' ? '5 5' : '2 2'
             
             return (
-              <>
-                {relevantStrikes.map((strike, index) => (
-                  <Line
-                    key={`call-${strike}`}
-                    yAxisId="options"
-                    type="monotone"
-                    dataKey={(d: any) => {
-                      const calls = d.calls.filter((c: any) => c.strike_price === strike)
-                      if (calls.length === 0) return null
-                      const prices = calls.map((c: any) => [c.bid_price, c.ask_price, c.last_price, c.mark_price])
-                        .flat()
-                        .filter((p: any) => p !== null && p !== undefined && p > 0)
-                      const avgPrice = prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
-                      console.log(`Call ${strike} at ${d.time}:`, avgPrice)
-                      return avgPrice
-                    }}
-                    stroke={`hsl(${index * 60}, 70%, 50%)`}
-                    strokeWidth={2}
-                    dot={false}
-                    name={`Call $${strike}`}
-                    connectNulls={false}
-                  />
-                ))}
-                {relevantStrikes.map((strike, index) => (
-                  <Line
-                    key={`put-${strike}`}
-                    yAxisId="options"
-                    type="monotone"
-                    dataKey={(d: any) => {
-                      const puts = d.puts.filter((p: any) => p.strike_price === strike)
-                      if (puts.length === 0) return null
-                      const prices = puts.map((p: any) => [p.bid_price, p.ask_price, p.last_price, p.mark_price])
-                        .flat()
-                        .filter((p: any) => p !== null && p !== undefined && p > 0)
-                      const avgPrice = prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null
-                      console.log(`Put ${strike} at ${d.time}:`, avgPrice)
-                      return avgPrice
-                    }}
-                    stroke={`hsl(${index * 60 + 180}, 70%, 50%)`}
-                    strokeWidth={2}
-                    dot={false}
-                    name={`Put $${strike}`}
-                    connectNulls={false}
-                  />
-                ))}
-              </>
+              <Line
+                key={series.key}
+                yAxisId="options"
+                type="monotone"
+                dataKey={(d: any) => {
+                  const point = series.data.find(sd => sd.time === d.time)
+                  return point ? point.price : null
+                }}
+                stroke={color}
+                strokeWidth={1.5}
+                dot={false}
+                name={`${series.type} $${series.strike}`}
+                connectNulls={false}
+                strokeDasharray={strokeDash}
+                data={dataWithOptionPrices}
+              />
             )
-          })()}
+          })}
           
           {/* Crossover markers */}
-          {dataWithOptionPrices.map((d, index) => {
-            if (!d.crossover) return null;
-            
-            const crossover = d.crossover;
-            const isBullish = crossover.signal_type === 'BULLISH';
-            const markerColor = isBullish ? '#10b981' : '#ef4444'; // Green for bullish, red for bearish
-            const markerSymbol = isBullish ? '▲' : '▼';
-            
-            return (
-              <ReferenceArea
-                key={`crossover-${index}`}
-                x1={d.time}
-                x2={d.time}
-                y1={crossover.price_at_crossover - 2}
-                y2={crossover.price_at_crossover + 2}
-                fill={markerColor}
-                fillOpacity={0.8}
-                stroke={markerColor}
-                strokeWidth={2}
-              />
-            );
-          })}
+          <Scatter
+            yAxisId="price"
+            data={dataWithOptionPrices.filter(d => d.crossover).map(d => ({
+              time: d.time,
+              price: d.crossover!.price_at_crossover,
+              signal_type: d.crossover!.signal_type,
+              crossover_direction: d.crossover!.crossover_direction
+            }))}
+            fill="#8884d8"
+            shape={(props: any) => {
+              const { cx, cy, payload } = props;
+              const isBullish = payload?.signal_type === 'BULLISH';
+              const color = isBullish ? '#10b981' : '#ef4444';
+              const symbol = isBullish ? '▲' : '▼';
+              
+              return (
+                <g>
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={8}
+                    fill={color}
+                    stroke="#fff"
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={cx}
+                    y={cy}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="white"
+                    fontSize="10"
+                    fontWeight="bold"
+                  >
+                    {symbol}
+                  </text>
+                </g>
+              );
+            }}
+          />
         </LineChart>
         </ResponsiveContainer>
       )}

@@ -20,15 +20,18 @@ export function AccountBalanceWidget({ accountId }: AccountBalanceProps) {
         .eq('account_id', accountId)
         .order('timestamp', { ascending: false })
         .limit(1)
-        .single()
 
       if (error) {
         console.error('Error fetching account balance:', error)
         return
       }
 
-      setAccountBalance(data)
-      setLastUpdated(new Date())
+      if (data && data.length > 0) {
+        setAccountBalance(data[0])
+        setLastUpdated(new Date())
+      } else {
+        setAccountBalance(null)
+      }
     } catch (error) {
       console.error('Error fetching account balance:', error)
     } finally {
