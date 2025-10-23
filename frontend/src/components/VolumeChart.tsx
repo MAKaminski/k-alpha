@@ -70,8 +70,17 @@ export function VolumeChart({ data }: VolumeChartProps) {
             type="category"
           />
           <YAxis 
+            yAxisId="volume"
+            orientation="left"
             tick={{ fontSize: 12 }}
             label={{ value: 'Volume', angle: -90, position: 'insideLeft' }}
+          />
+          <YAxis 
+            yAxisId="spacer"
+            orientation="right"
+            tick={false}
+            axisLine={false}
+            label={{ value: '', angle: 90, position: 'insideRight' }}
           />
           <Tooltip 
             content={({ active, payload, label }) => {
@@ -92,6 +101,7 @@ export function VolumeChart({ data }: VolumeChartProps) {
             }}
           />
           <Bar 
+            yAxisId="volume"
             dataKey="volume" 
             fill="#3b82f6"
             radius={[2, 2, 0, 0]}
