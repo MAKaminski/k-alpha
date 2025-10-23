@@ -6,6 +6,7 @@ import { CrossoverWidget } from '../src/components/CrossoverWidget'
 import { Controls } from '../src/components/Controls'
 import { PriceChart } from '../src/components/PriceChart'
 import { VolumeChart } from '../src/components/VolumeChart'
+import { OptionsChart } from '../src/components/OptionsChart'
 import { DayNavigator } from '../src/components/DayNavigator'
 import { useDayData } from '../src/hooks/useDayData'
 import { filterMarketHoursData } from '../src/utils/marketHours'
@@ -140,6 +141,10 @@ export default function History() {
             />
             
             <VolumeChart data={filteredChartData} />
+            
+            {showOptions && (
+              <OptionsChart currentPrice={typeof chartData[chartData.length - 1]?.last_price === 'number' ? chartData[chartData.length - 1].last_price : 0} />
+            )}
           </div>
         )}
       </div>

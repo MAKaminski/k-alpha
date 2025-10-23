@@ -11,72 +11,6 @@ interface PriceChartProps {
 }
 
 export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }: PriceChartProps) {
-  // State for toggling individual option series
-  const [visibleOptions, setVisibleOptions] = useState<Set<string>>(new Set())
-  
-  // Process options data and create series
-  const optionsSeries = useMemo(() => {
-    if (!showOptions) return []
-    
-    const seriesMap = new Map<string, { strike: number, type: 'CALL' | 'PUT', data: any[] }>()
-    
-    data.forEach(d => {
-      // Process calls
-      d.calls?.forEach(call => {
-        const key = `CALL_${call.strike_price}`
-        if (!seriesMap.has(key)) {
-          seriesMap.set(key, { strike: call.strike_price, type: 'CALL', data: [] })
-        }
-        seriesMap.get(key)!.data.push({
-          time: d.time,
-          price: call.last_price || call.mark_price || call.bid_price || 0,
-          volume: call.volume || 0,
-          openInterest: call.open_interest || 0
-        })
-      })
-      
-      // Process puts
-      d.puts?.forEach(put => {
-        const key = `PUT_${put.strike_price}`
-        if (!seriesMap.has(key)) {
-          seriesMap.set(key, { strike: put.strike_price, type: 'PUT', data: [] })
-        }
-        seriesMap.get(key)!.data.push({
-          time: d.time,
-          price: put.last_price || put.mark_price || put.bid_price || 0,
-          volume: put.volume || 0,
-          openInterest: put.open_interest || 0
-        })
-      })
-    })
-    
-    return Array.from(seriesMap.entries()).map(([key, series]) => ({
-      key,
-      strike: series.strike,
-      type: series.type,
-      data: series.data,
-      visible: visibleOptions.has(key)
-    }))
-  }, [data, showOptions, visibleOptions])
-  
-  // Initialize visible options to ±1 strikes around current price
-  React.useEffect(() => {
-    if (data.length > 0 && optionsSeries.length > 0) {
-      const currentPrice = data[data.length - 1]?.last_price || 0
-      const newVisible = new Set<string>()
-      
-      optionsSeries.forEach(series => {
-        const diff = Math.abs(series.strike - currentPrice)
-        if (diff <= 1) { // Within $1 of current price
-          newVisible.add(series.key)
-        }
-      })
-      
-      if (newVisible.size > 0) {
-        setVisibleOptions(newVisible)
-      }
-    }
-  }, [data, optionsSeries])
   
   // Calculate price range for left axis including all price data (QQQ, SMA9, VWAP)
   const allPrices = data.flatMap(d => [
@@ -211,40 +145,10 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
     console.log('Last chart data point:', dataWithOptionPrices[dataWithOptionPrices.length - 1])
   }
 
-  const toggleOptionSeries = (key: string) => {
-    setVisibleOptions(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(key)) {
-        newSet.delete(key)
-      } else {
-        newSet.add(key)
-      }
-      return newSet
-    })
-  }
 
   return (
     <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">QQQ Price & Options</h3>
-        {showOptions && optionsSeries.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {optionsSeries.map(series => (
-              <button
-                key={series.key}
-                onClick={() => toggleOptionSeries(series.key)}
-                className={`px-2 py-1 text-xs rounded ${
-                  series.visible 
-                    ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                    : 'bg-gray-100 text-gray-600 border border-gray-300'
-                }`}
-              >
-                {series.type} ${series.strike}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <h3 className="text-lg font-semibold mb-4">QQQ Price & Indicators</h3>
       {validData.length === 0 ? (
         <div className="flex items-center justify-center h-full text-gray-500">
           <p>No data available</p>
@@ -267,13 +171,6 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             tick={{ fontSize: 12 }}
             tickFormatter={(value) => `$${Math.round(value)}`}
             label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }}
-          />
-          <YAxis 
-            yAxisId="options"
-            orientation="right"
-            domain={[Math.max(0, minOptionPrice - optionPadding), maxOptionPrice + optionPadding]}
-            tick={{ fontSize: 12 }}
-            label={{ value: 'Options ($)', angle: 90, position: 'insideRight' }}
           />
           <Tooltip 
             content={({ active, payload, label }) => {
@@ -332,32 +229,6 @@ export function PriceChart({ data, showPrice, showSMA9, showVWAP, showOptions }:
             />
           )}
           
-          {/* Options series */}
-          {showOptions && optionsSeries.map(series => {
-            if (!series.visible) return null
-            
-            const color = series.type === 'CALL' ? '#3b82f6' : '#ef4444'
-            const strokeDash = series.type === 'CALL' ? '5 5' : '2 2'
-            
-            return (
-              <Line
-                key={series.key}
-                yAxisId="options"
-                type="monotone"
-                dataKey={(d: any) => {
-                  const point = series.data.find(sd => sd.time === d.time)
-                  return point ? point.price : null
-                }}
-                stroke={color}
-                strokeWidth={1.5}
-                dot={false}
-                name={`${series.type} $${series.strike}`}
-                connectNulls={false}
-                strokeDasharray={strokeDash}
-                data={dataWithOptionPrices}
-              />
-            )
-          })}
           
           {/* Crossover markers */}
           <Scatter

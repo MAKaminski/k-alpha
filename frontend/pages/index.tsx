@@ -6,6 +6,7 @@ import { CrossoverWidget } from '../src/components/CrossoverWidget'
 import { Controls } from '../src/components/Controls'
 import { PriceChart } from '../src/components/PriceChart'
 import { VolumeChart } from '../src/components/VolumeChart'
+import { OptionsChart } from '../src/components/OptionsChart'
 import { useRealtimeData } from '../src/hooks/useRealtimeData'
 import { filterMarketHoursData } from '../src/utils/marketHours'
 import { History, BarChart3 } from 'lucide-react'
@@ -88,6 +89,10 @@ export default function Home() {
           />
           
           <VolumeChart data={filteredChartData} />
+          
+          {showOptions && (
+            <OptionsChart currentPrice={typeof latestQuote?.last_price === 'number' ? latestQuote.last_price : 0} />
+          )}
         </div>
       </div>
     </div>
