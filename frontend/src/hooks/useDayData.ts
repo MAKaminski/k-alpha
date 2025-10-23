@@ -122,6 +122,13 @@ export function useDayData() {
     // Process quotes
     quotes.forEach(quote => {
       const timestamp = new Date(quote.timestamp)
+      
+      // Validate timestamp
+      if (isNaN(timestamp.getTime())) {
+        console.warn('Invalid timestamp found:', quote.timestamp)
+        return
+      }
+      
       const timeKey = timestamp.toISOString()
       const timeLabel = timestamp.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
@@ -147,6 +154,13 @@ export function useDayData() {
     // Process indicators
     indicators.forEach(indicator => {
       const timestamp = new Date(indicator.timestamp)
+      
+      // Validate timestamp
+      if (isNaN(timestamp.getTime())) {
+        console.warn('Invalid indicator timestamp found:', indicator.timestamp)
+        return
+      }
+      
       const timeKey = timestamp.toISOString()
       const existing = dataMap.get(timeKey)
 
@@ -159,6 +173,13 @@ export function useDayData() {
     // Process options
     options.forEach(option => {
       const timestamp = new Date(option.timestamp)
+      
+      // Validate timestamp
+      if (isNaN(timestamp.getTime())) {
+        console.warn('Invalid option timestamp found:', option.timestamp)
+        return
+      }
+      
       const timeKey = timestamp.toISOString()
       const existing = dataMap.get(timeKey)
 
@@ -196,9 +217,20 @@ export function useDayData() {
     })
 
     // Convert map to array and sort by timestamp
-    return Array.from(dataMap.values()).sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
+    const sortedData = Array.from(dataMap.values()).sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime()
+      const timeB = new Date(b.timestamp).getTime()
+      
+      // Handle invalid dates
+      if (isNaN(timeA) || isNaN(timeB)) {
+        console.warn('Invalid date found during sorting:', { a: a.timestamp, b: b.timestamp })
+        return 0
+      }
+      
+      return timeA - timeB
+    })
+    
+    return sortedData
   }
 
   const refetchDataForDate = async (date: string) => {
