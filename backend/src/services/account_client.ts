@@ -11,14 +11,16 @@ interface AccountData {
 }
 
 interface SchwabAccountResponse {
-  accountNumber: string;
-  accountType: string;
-  accountId: string;
-  currentBalances: {
-    cashBalance: number;
-    cashAvailableForTrading: number;
-    totalValue: number;
-    buyingPower: number;
+  securitiesAccount: {
+    type: string;
+    accountNumber: string;
+    currentBalances: {
+      liquidationValue: number;
+      equity: number;
+      availableFunds: number;
+      cashBalance: number;
+      buyingPower: number;
+    };
   };
 }
 
@@ -46,9 +48,15 @@ export class AccountClient {
       console.log(`🔍 Account API Debug - Retrieved ${accounts.length} accounts`);
       
       // Find the account that matches our target account ID
+      // Normalize account IDs by removing dashes for comparison
+      const normalizeAccountId = (id: string) => id.replace(/-/g, '');
+      const normalizedTargetId = normalizeAccountId(account_id);
+      
       const targetAccount = accounts.find(acc => 
         acc.account_id === account_id || 
         acc.account_number === account_id ||
+        normalizeAccountId(acc.account_id) === normalizedTargetId ||
+        normalizeAccountId(acc.account_number) === normalizedTargetId ||
         acc.account_id.includes(account_id) ||
         acc.account_number.includes(account_id)
       );
@@ -115,14 +123,19 @@ export class AccountClient {
       throw new Error(`Unexpected response structure from accounts API`);
     }
     
-    return accounts.map(account => ({
-      account_id: account.accountId,
-      account_type: account.accountType,
-      account_number: account.accountNumber,
-      current_balance: account.currentBalances.totalValue,
-      available_cash: account.currentBalances.cashAvailableForTrading,
-      buying_power: account.currentBalances.buyingPower,
-      timestamp: new Date()
-    }));
+    return accounts.map(account => {
+      const securitiesAccount = account.securitiesAccount;
+      const currentBalances = securitiesAccount.currentBalances;
+      
+      return {
+        account_id: securitiesAccount.accountNumber,
+        account_type: securitiesAccount.type,
+        account_number: securitiesAccount.accountNumber,
+        current_balance: currentBalances.liquidationValue || currentBalances.equity || 0,
+        available_cash: currentBalances.availableFunds || currentBalances.cashBalance || 0,
+        buying_power: currentBalances.buyingPower || 0,
+        timestamp: new Date()
+      };
+    });
   }
 }
