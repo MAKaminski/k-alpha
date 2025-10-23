@@ -39,37 +39,38 @@ export class AccountClient {
   }
 
   async fetch_account_balance(account_id: string): Promise<AccountData> {
-    const url = `https://api.schwabapi.com/trader/v1/accounts/${account_id}`;
-    const token = await this.get_current_token();
+    // First, try to get all accounts to find the correct account hash
+    const accounts = await this.fetch_accounts();
     
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Schwab Account API error: ${response.status} ${response.statusText}`);
+    // Find the account that matches our target account ID
+    const targetAccount = accounts.find(acc => 
+      acc.account_id === account_id || 
+      acc.account_number === account_id ||
+      acc.account_id.includes(account_id) ||
+      acc.account_number.includes(account_id)
+    );
+    
+    if (!targetAccount) {
+      console.log(`🔍 Account API Debug - Available accounts:`, accounts.map(acc => ({ id: acc.account_id, number: acc.account_number })));
+      throw new Error(`Account ${account_id} not found in available accounts`);
     }
-
-    const data = await response.json() as SchwabAccountResponse;
-
-    return {
-      account_id: data.accountId,
-      account_type: data.accountType,
-      account_number: data.accountNumber,
-      current_balance: data.currentBalances.totalValue,
-      available_cash: data.currentBalances.cashAvailableForTrading,
-      buying_power: data.currentBalances.buyingPower,
-      timestamp: new Date()
-    };
+    
+    console.log(`🔍 Account API Debug - Found target account:`, {
+      id: targetAccount.account_id,
+      number: targetAccount.account_number,
+      type: targetAccount.account_type
+    });
+    
+    return targetAccount;
   }
 
   async fetch_accounts(): Promise<AccountData[]> {
     const url = 'https://api.schwabapi.com/trader/v1/accounts';
     const token = await this.get_current_token();
     
+    console.log(`🔍 Accounts API Debug - URL: ${url}`);
+    console.log(`🔍 Accounts API Debug - Token length: ${token.length}`);
+    
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -77,8 +78,13 @@ export class AccountClient {
       }
     });
 
+    console.log(`🔍 Accounts API Debug - Response status: ${response.status}`);
+    console.log(`🔍 Accounts API Debug - Response headers:`, Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      throw new Error(`Schwab Accounts API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.log(`🔍 Accounts API Debug - Error response body: ${errorText}`);
+      throw new Error(`Schwab Accounts API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json() as { accounts: SchwabAccountResponse[] };
