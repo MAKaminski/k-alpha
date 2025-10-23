@@ -57,10 +57,16 @@ export function useRealtimeData() {
       )
       .subscribe()
 
+    // Also poll every 2 seconds as backup for real-time updates
+    const pollInterval = setInterval(() => {
+      fetchInitialData()
+    }, 2000)
+
     return () => {
       quotesSubscription.unsubscribe()
       indicatorsSubscription.unsubscribe()
       optionsSubscription.unsubscribe()
+      clearInterval(pollInterval)
     }
   }, [])
 
@@ -271,8 +277,8 @@ export function useRealtimeData() {
       // Use the actual price data from the database (convert string to number)
       const price = parseFloat(indicator.last_price.toString())
       
-      // Debug: Log market hours info
-      console.log(`Indicator ${index}: timestamp=${indicator.timestamp}, timeLabel=${timeLabel}, is_market_hours=${indicator.is_market_hours}`)
+      // Debug: Log market hours info and volume
+      console.log(`Indicator ${index}: timestamp=${indicator.timestamp}, timeLabel=${timeLabel}, is_market_hours=${indicator.is_market_hours}, volume=${indicator.volume}`)
       
       result.push({
         timestamp: indicator.timestamp,

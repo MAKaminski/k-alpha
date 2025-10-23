@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Header } from '../src/components/Header'
+import { AccountBalanceWidget } from '../src/components/AccountBalance'
 import { Controls } from '../src/components/Controls'
 import { PriceChart } from '../src/components/PriceChart'
 import { VolumeChart } from '../src/components/VolumeChart'
@@ -41,6 +42,9 @@ export default function Home() {
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
         <Header currentTime={currentTime} loading={loading} latestQuote={latestQuote} />
+        
+        {/* Account Balance Widget */}
+        <AccountBalanceWidget accountId="8042-3452" />
         
         {/* Navigation */}
         <div className="bg-white rounded-lg shadow-lg p-4 mb-6">

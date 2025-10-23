@@ -64,3 +64,15 @@ export interface ChartData {
   ask: number
   is_market_hours?: boolean
 }
+
+export interface AccountBalance {
+  id: number
+  account_id: string
+  account_type: string
+  account_number: string
+  current_balance: number
+  available_cash: number
+  buying_power: number
+  timestamp: string
+  created_at: string
+}

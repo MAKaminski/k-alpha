@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { CONSTANTS } from './config/constants.js';
 import { SchwabClient } from './services/schwab_client.js';
 import { OptionsClient } from './services/options_client.js';
+import { AccountClient } from './services/account_client.js';
+import { AccountSupabaseService } from './services/account_supabase.js';
 import { SupabaseService } from './services/supabase_client.js';
 import { OptionsSupabaseService } from './services/options_supabase.js';
 import { IndicatorsService } from './services/indicators_service.js';
@@ -28,12 +30,22 @@ const options_client = new OptionsClient(
   () => schwab_auth.get_valid_access_token()
 );
 
+const account_client = new AccountClient(
+  '',
+  () => schwab_auth.get_valid_access_token()
+);
+
 const supabase = new SupabaseService(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_KEY!
 );
 
 const options_supabase = new OptionsSupabaseService(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+);
+
+const account_supabase = new AccountSupabaseService(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_KEY!
 );
@@ -50,6 +62,9 @@ const crossover_detector = new CrossoverDetector(
 
 // Track last total volume for incremental calculation
 let lastTotalVolume: number | null = null;
+
+// Track account balance
+let currentAccountBalance: any = null;
 
 async function fetch_and_store_quote(): Promise<void> {
   try {
@@ -195,14 +210,55 @@ async function check_for_crossover_signals(quote: any): Promise<void> {
   }
 }
 
+async function fetch_account_balance(): Promise<void> {
+  try {
+    const account_id = process.env.SCHWAB_ACCOUNT_ID || '8042-3452';
+    
+    // Use enhanced rate limiting with service tracking
+    const account_data = await withEnhancedRateLimit(
+      'account',
+      '/accounts',
+      'GET',
+      () => account_client.fetch_account_balance(account_id)
+    );
+    
+    currentAccountBalance = account_data;
+    
+    // Store account balance data in Supabase for historical tracking
+    await account_supabase.insert_account_balance({
+      account_id: account_data.account_id,
+      account_type: account_data.account_type,
+      account_number: account_data.account_number,
+      current_balance: account_data.current_balance,
+      available_cash: account_data.available_cash,
+      buying_power: account_data.buying_power,
+      timestamp: account_data.timestamp.toISOString()
+    });
+    
+    log(`💰 Account ${account_data.account_id}: $${account_data.current_balance.toFixed(2)} (Cash: $${account_data.available_cash.toFixed(2)}, Buying Power: $${account_data.buying_power.toFixed(2)}) - Saved to DB`);
+    
+  } catch (error) {
+    log(`Account balance error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 async function start_service(): Promise<void> {
   logInfo(`Starting k-alpha service for ${CONSTANTS.QUOTE_SYMBOL}`);
   logInfo(`Rate limit: 120 calls/min, using 5-second intervals (12 calls/min max)`);
+  
+  // Fetch initial account balance
+  await fetch_account_balance();
   
   // Start the main data fetching loop
   setInterval(
     fetch_and_store_quote,
     CONSTANTS.FETCH_INTERVAL_MS
+  );
+  
+  // Start account balance polling (every 5 seconds)
+  setInterval(
+    fetch_account_balance,
+    5000
   );
   
   // Start enhanced rate limit monitoring
