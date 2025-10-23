@@ -48,6 +48,9 @@ const crossover_detector = new CrossoverDetector(
   process.env.SUPABASE_KEY!
 );
 
+// Track last total volume for incremental calculation
+let lastTotalVolume: number | null = null;
+
 async function fetch_and_store_quote(): Promise<void> {
   try {
     log(`📊 Starting fetch cycle - Current rate: ${requestTracker.getCurrentRequestCount()}/min`);
@@ -60,6 +63,18 @@ async function fetch_and_store_quote(): Promise<void> {
       () => schwab_client.fetch_quote(CONSTANTS.QUOTE_SYMBOL)
     );
     
+    // Calculate incremental volume
+    let incrementalVolume = 0;
+    if (lastTotalVolume !== null && quote.total_volume > lastTotalVolume) {
+      incrementalVolume = quote.total_volume - lastTotalVolume;
+    }
+    
+    // Update last total volume
+    lastTotalVolume = quote.total_volume;
+    
+    // Update quote with incremental volume
+    quote.volume = incrementalVolume;
+    
     await supabase.insert_quote({
       symbol: quote.symbol,
       bid_price: quote.bid_price,
@@ -69,7 +84,7 @@ async function fetch_and_store_quote(): Promise<void> {
       timestamp: quote.timestamp.toISOString()
     });
 
-    log(`Stored ${quote.symbol}: $${quote.last_price}`);
+    log(`Stored ${quote.symbol}: $${quote.last_price} (Vol: ${incrementalVolume})`);
     
     // Calculate and store technical indicators
     await calculate_and_store_indicators(quote);

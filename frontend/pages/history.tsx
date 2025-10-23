@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Header } from '../src/components/Header'
 import { Controls } from '../src/components/Controls'
@@ -6,6 +6,7 @@ import { PriceChart } from '../src/components/PriceChart'
 import { VolumeChart } from '../src/components/VolumeChart'
 import { DayNavigator } from '../src/components/DayNavigator'
 import { useDayData } from '../src/hooks/useDayData'
+import { filterMarketHoursData } from '../src/utils/marketHours'
 import { Clock, BarChart3 } from 'lucide-react'
 
 export default function History() {
@@ -24,6 +25,15 @@ export default function History() {
   const [showSMA9, setShowSMA9] = useState(true)
   const [showVWAP, setShowVWAP] = useState(true)
   const [showOptions, setShowOptions] = useState(true)
+  const [showMarketHours, setShowMarketHours] = useState(true)
+
+  // Filter data based on market hours setting
+  const filteredChartData = useMemo(() => {
+    if (showMarketHours) {
+      return filterMarketHoursData(chartData)
+    }
+    return chartData
+  }, [chartData, showMarketHours])
 
   // Prevent hydration issues by not rendering until mounted
   if (!mounted) {
@@ -84,10 +94,12 @@ export default function History() {
           showSMA9={showSMA9}
           showVWAP={showVWAP}
           showOptions={showOptions}
+          showMarketHours={showMarketHours}
           onTogglePrice={() => setShowPrice(!showPrice)}
           onToggleSMA9={() => setShowSMA9(!showSMA9)}
           onToggleVWAP={() => setShowVWAP(!showVWAP)}
           onToggleOptions={() => setShowOptions(!showOptions)}
+          onToggleMarketHours={() => setShowMarketHours(!showMarketHours)}
         />
 
         {loading ? (
@@ -109,14 +121,14 @@ export default function History() {
         ) : (
           <div className="grid grid-cols-1 gap-6">
             <PriceChart
-              data={chartData}
+              data={filteredChartData}
               showPrice={showPrice}
               showSMA9={showSMA9}
               showVWAP={showVWAP}
               showOptions={showOptions}
             />
             
-            <VolumeChart data={chartData} />
+            <VolumeChart data={filteredChartData} />
           </div>
         )}
       </div>

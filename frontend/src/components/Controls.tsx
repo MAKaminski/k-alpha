@@ -6,10 +6,12 @@ interface ControlsProps {
   showSMA9: boolean
   showVWAP: boolean
   showOptions: boolean
+  showMarketHours: boolean
   onTogglePrice: () => void
   onToggleSMA9: () => void
   onToggleVWAP: () => void
   onToggleOptions: () => void
+  onToggleMarketHours: () => void
 }
 
 export function Controls({
@@ -17,22 +19,25 @@ export function Controls({
   showSMA9,
   showVWAP,
   showOptions,
+  showMarketHours,
   onTogglePrice,
   onToggleSMA9,
   onToggleVWAP,
-  onToggleOptions
+  onToggleOptions,
+  onToggleMarketHours
 }: ControlsProps) {
   const controls = [
     { key: 'price', label: 'QQQ Price', show: showPrice, onToggle: onTogglePrice, color: '#2563eb' },
     { key: 'sma9', label: 'SMA9', show: showSMA9, onToggle: onToggleSMA9, color: '#dc2626' },
     { key: 'vwap', label: 'Session VWAP', show: showVWAP, onToggle: onToggleVWAP, color: '#16a34a' },
-    { key: 'options', label: 'Options', show: showOptions, onToggle: onToggleOptions, color: '#f59e0b' }
+    { key: 'options', label: 'Options', show: showOptions, onToggle: onToggleOptions, color: '#f59e0b' },
+    { key: 'marketHours', label: 'Display Market-Hours', show: showMarketHours, onToggle: onToggleMarketHours, color: '#7c3aed' }
   ]
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
       <h3 className="text-lg font-semibold mb-4">Chart Controls</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {controls.map(control => (
           <button
             key={control.key}

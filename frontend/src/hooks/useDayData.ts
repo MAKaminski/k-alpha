@@ -65,15 +65,26 @@ export function useDayData() {
   const fetchDataForDate = async (date: string) => {
     setLoading(true)
     try {
-      const startOfDay = `${date}T00:00:00.000Z`
-      const endOfDay = `${date}T23:59:59.999Z`
+      // Create date range in EST/EDT timezone to ensure we get the correct calendar day
+      const targetDate = new Date(date + 'T00:00:00') // Create date in local timezone
+      
+      // Convert to EST/EDT timezone for proper filtering
+      const estDate = new Date(targetDate.toLocaleString("en-US", { timeZone: "America/New_York" }))
+      const startOfDay = new Date(estDate.getFullYear(), estDate.getMonth(), estDate.getDate(), 0, 0, 0, 0)
+      const endOfDay = new Date(estDate.getFullYear(), estDate.getMonth(), estDate.getDate(), 23, 59, 59, 999)
+      
+      // Convert back to UTC for database query
+      const startOfDayUTC = startOfDay.toISOString()
+      const endOfDayUTC = endOfDay.toISOString()
+
+      console.log(`Fetching data for ${date} (EST): ${startOfDayUTC} to ${endOfDayUTC}`)
 
       // Fetch quotes for the specific date
       const { data: quotes, error: quotesError } = await supabase
         .from('quotes')
         .select('*')
-        .gte('timestamp', startOfDay)
-        .lte('timestamp', endOfDay)
+        .gte('timestamp', startOfDayUTC)
+        .lte('timestamp', endOfDayUTC)
         .order('timestamp', { ascending: true })
 
       if (quotesError) {
@@ -85,8 +96,8 @@ export function useDayData() {
       const { data: indicators, error: indicatorsError } = await supabase
         .from('indicators')
         .select('*')
-        .gte('timestamp', startOfDay)
-        .lte('timestamp', endOfDay)
+        .gte('timestamp', startOfDayUTC)
+        .lte('timestamp', endOfDayUTC)
         .order('timestamp', { ascending: true })
 
       if (indicatorsError) {
@@ -98,8 +109,8 @@ export function useDayData() {
       const { data: options, error: optionsError } = await supabase
         .from('options')
         .select('*')
-        .gte('timestamp', startOfDay)
-        .lte('timestamp', endOfDay)
+        .gte('timestamp', startOfDayUTC)
+        .lte('timestamp', endOfDayUTC)
         .order('timestamp', { ascending: true })
 
       if (optionsError) {

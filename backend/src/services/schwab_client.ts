@@ -6,6 +6,7 @@ interface QuoteData {
   ask_price: number;
   last_price: number;
   volume: number;
+  total_volume: number; // Add total volume for tracking
   timestamp: Date;
 }
 
@@ -64,7 +65,8 @@ export class SchwabClient {
       bid_price: quote.bidPrice || 0,
       ask_price: quote.askPrice || 0,
       last_price: quote.lastPrice || 0,
-      volume: quote.totalVolume || 0,
+      volume: 0, // Will be calculated as incremental volume
+      total_volume: quote.totalVolume || 0,
       timestamp: new Date() // Use current time instead of potentially stale quoteTime
     };
   }

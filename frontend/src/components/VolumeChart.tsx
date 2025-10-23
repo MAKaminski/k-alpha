@@ -59,7 +59,7 @@ export function VolumeChart({ data }: VolumeChartProps) {
 
   return (
     <div className="w-full h-48 bg-white rounded-lg shadow-lg p-4">
-      <h3 className="text-lg font-semibold mb-4">Volume (Interval)</h3>
+      <h3 className="text-lg font-semibold mb-4">Volume (Per Interval)</h3>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={completeData}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -80,7 +80,10 @@ export function VolumeChart({ data }: VolumeChartProps) {
                   <div className="bg-white p-3 border rounded shadow-lg">
                     <p className="font-semibold">Time: {label}</p>
                     <p style={{ color: payload[0].color }}>
-                      Volume: {payload[0].value?.toLocaleString()}
+                      Volume (Interval): {payload[0].value?.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Incremental volume for this period
                     </p>
                   </div>
                 )
