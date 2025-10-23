@@ -39,9 +39,14 @@ export default function History() {
 
   const currentTime = new Date()
   const latestQuote = chartData.length > 0 ? {
+    id: 0,
     symbol: 'QQQ',
+    bid_price: chartData[chartData.length - 1].bid_price || 0,
+    ask_price: chartData[chartData.length - 1].ask_price || 0,
     last_price: chartData[chartData.length - 1].last_price || 0,
-    timestamp: chartData[chartData.length - 1].timestamp
+    volume: chartData[chartData.length - 1].volume || 0,
+    timestamp: chartData[chartData.length - 1].timestamp,
+    created_at: chartData[chartData.length - 1].timestamp
   } : null
 
   return (
